@@ -68,10 +68,7 @@ class TextCache {
     }
   }
 
-  TextStream putIfAbsent(
-      List keys,
-      Future<void> Function(FindTextInfo find, PutIfAbsentText putIfAbsent)
-          callback) {
+  TextStream putIfAbsent(List keys, TextLayoutCallback callback) {
     final key = ListKey(keys);
 
     final _text = getListener(key);
@@ -163,6 +160,9 @@ class TextCache {
 typedef FindTextInfo = TextInfo? Function(List keys);
 typedef PutIfAbsentText = Future<TextInfo> Function(
     List keys, TextPainterBuilder text);
+
+typedef TextLayoutCallback = Future<void> Function(
+    FindTextInfo find, PutIfAbsentText putIfAbsent);
 
 typedef TextPainterBuilder = Future<TextPainter> Function();
 

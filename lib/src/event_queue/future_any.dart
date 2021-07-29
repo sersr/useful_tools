@@ -4,9 +4,12 @@ class FutureAny {
   final _tasks = <Future>{};
 
   int get length => _tasks.length;
+
   bool get isEmpty => length == 0;
   bool get isNotEmpty => !isEmpty;
+  
   Completer<void>? _completer;
+
   Future? get future {
     if (_tasks.isNotEmpty) _set();
     return _completer?.future;
