@@ -1,7 +1,6 @@
 library event_queue;
 
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';

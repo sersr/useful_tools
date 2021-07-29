@@ -190,11 +190,7 @@ class TextStream {
     }
 
     if (disposed) {
-      if (textInfos != null) {
-        for (var info in textInfos) {
-          info.dispose();
-        }
-      }
+      textInfos?.forEach(disposeTextInfo);
     } else {
       assert(!_schedule);
       _textInfos = textInfos;
@@ -239,16 +235,16 @@ class TextStream {
       return;
     }
     disposed = true;
-    if (_textInfos != null) {
-      for (final info in _textInfos!) {
-        info.dispose();
-      }
-    }
+    _textInfos?.forEach(disposeTextInfo);
     _textInfos = null;
   }
 }
 
 typedef ListenerFunction = void Function(List<TextInfo>? textInfo, bool error);
+
+void disposeTextInfo(TextInfo info) {
+  info.dispose();
+}
 
 class TextInfo {
   TextInfo.text(_TextRef _text) : this._(_text);

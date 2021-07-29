@@ -80,7 +80,7 @@ Widget reloadBotton(VoidCallback onTap) {
       bgColor: Colors.blue,
       splashColor: Colors.blue[200],
       radius: 40,
-      child: Text(
+      child: const Text(
         '重新加载',
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       ),
@@ -91,8 +91,8 @@ Widget reloadBotton(VoidCallback onTap) {
 
 Widget loadingIndicator({double radius = 30}) {
   return Center(
-      child: Container(
+      child: SizedBox(
           width: radius,
           height: radius,
-          child: CircularProgressIndicator(strokeWidth: 3.0)));
+          child: const CircularProgressIndicator(strokeWidth: 3.0)));
 }
