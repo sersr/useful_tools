@@ -119,12 +119,20 @@ class TextCache {
         var _textInfo = innerGetTextRef(keys);
 
         if (_textInfo == null) {
-          final _text = _textRef[key] = _TextRef(await builder(), (ref) {
+          final _built = builder();
+          TextPainter _textPainter;
+          if (_built is Future) {
+            _textPainter = await _built;
+          } else {
+            _textPainter = _built;
+          }
+
+          final _text = _textRef[key] = _TextRef(_textPainter, (ref) {
             if (_textRef.containsKey(key)) {
               final text = _textRef.remove(key);
               assert(text == ref, '$text, $ref');
 
-              if (_textRefDispose.length > 40) {
+              if (_textRefDispose.length > 150) {
                 final keyFirst = _textRefDispose.keys.first;
                 _textRefDispose.remove(keyFirst);
               }
@@ -133,10 +141,11 @@ class TextCache {
           });
           _textInfo = TextInfo.text(_text);
         }
-        return _list![key] = _textInfo;
+        _list![key] = _textInfo;
+        return _textInfo;
       }
 
-      await releaseUI;
+      // await releaseUI;
       var error = false;
       final isEmpty = stream.isEmpty;
 
@@ -148,7 +157,7 @@ class TextCache {
         error = true;
       } finally {
         final infos = _list?.values;
-        if (!isEmpty) await releaseUI;
+        // if (!isEmpty) await releaseUI;
         stream.setTextInfo(infos?.toList(), error);
       }
     });
@@ -164,7 +173,7 @@ typedef PutIfAbsentText = Future<TextInfo> Function(
 typedef TextLayoutCallback = Future<void> Function(
     FindTextInfo find, PutIfAbsentText putIfAbsent);
 
-typedef TextPainterBuilder = Future<TextPainter> Function();
+typedef TextPainterBuilder = FutureOr<TextPainter> Function();
 
 typedef TextStreamRemove = void Function(TextStream);
 

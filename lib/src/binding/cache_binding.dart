@@ -8,16 +8,24 @@ mixin CacheBinding on ServicesBinding {
   void initInstances() {
     super.initInstances();
     _instance = this;
-    _textCache = TextCache();
-    _imageCacheLoop = ImageCacheLoop();
+    _textCache = createTextCache();
+    _imageRefCache = createImageRefCache();
   }
 
   TextCache? _textCache;
 
   TextCache? get textCache => _textCache;
 
-  ImageCacheLoop? _imageCacheLoop;
-  ImageCacheLoop? get imageCacheLoop => _imageCacheLoop;
+  ImageRefCache? createImageRefCache() {
+    return ImageRefCache();
+  }
+
+  TextCache? createTextCache() {
+    return TextCache();
+  }
+
+  ImageRefCache? _imageRefCache;
+  ImageRefCache? get imageRefCache => _imageRefCache;
 
   static CacheBinding? get instance => _instance;
   static CacheBinding? _instance;
@@ -25,10 +33,9 @@ mixin CacheBinding on ServicesBinding {
   @override
   void handleMemoryPressure() {
     super.handleMemoryPressure();
-    _imageCacheLoop?.clear();
+    _imageRefCache?.clear();
     _textCache?.clear();
   }
 }
 TextCache? get textCache => CacheBinding.instance?.textCache;
-ImageCacheLoop? get imageCacheLoop =>
-    CacheBinding.instance?.imageCacheLoop;
+ImageRefCache? get imageRefCache => CacheBinding.instance?.imageRefCache;

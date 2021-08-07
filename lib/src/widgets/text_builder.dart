@@ -41,6 +41,7 @@ class _TextBuilderState extends State<TextBuilder> {
   bool _error = false;
 
   void _subText() {
+    assert(textCache != null, 'CacheBinding 没有绑定');
     final all = textCache!.putIfAbsent(widget.keys, widget.layout);
 
     if (all != _textStream) {

@@ -58,7 +58,7 @@ class ImageState extends State<ImageFuture> {
     final height = widget.height;
     final getPath = widget.getPath;
 
-    final _listener = imageCacheLoop!.preCacheUrl(url,
+    final _listener = imageRefCache!.preCacheUrl(url,
         getPath: getPath,
         cacheWidth: width,
         cacheHeight: height,
@@ -98,8 +98,11 @@ class ImageState extends State<ImageFuture> {
 
   @override
   Widget build(BuildContext context) {
-    final image = ImageRefWidget(info: pictureInfo);
-
+    // final image = ImageRefWidget(info: pictureInfo);
+    final image = RawImage(
+      image: pictureInfo?.image,
+      fit: widget.boxFit,
+    );
     if (_error) {
       if (widget.errorBuilder != null) {
         return widget.errorBuilder!(context);

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 class FutureAny {
-  final _tasks = <Future>{};
+  final _tasks = <Future>[];
 
   int get length => _tasks.length;
 

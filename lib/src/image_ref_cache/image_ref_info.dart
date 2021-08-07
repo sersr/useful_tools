@@ -12,7 +12,7 @@ class ImageRefInfo {
     _imageRef._handles.add(this);
   }
   final _ImageRef _imageRef;
-
+  ui.Image get image => _imageRef.rawImage;
   void drawImageRef(
       ui.Canvas canvas, ui.Rect src, ui.Rect dst, ui.Paint paint) {
     assert(!disposed);
