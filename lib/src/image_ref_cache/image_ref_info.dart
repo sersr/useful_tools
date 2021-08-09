@@ -74,7 +74,7 @@ typedef ImageRefListenerCallback = void Function(
 class ImageRefStream {
   ImageRefStream({this.onRemove});
   ImageRefInfo? _image;
-  bool _error = false;
+  bool _streamError = false;
   int? get sizeBytes {
     final image = _image?._imageRef.rawImage;
     if (image != null) {
@@ -95,20 +95,25 @@ class ImageRefStream {
   // 任务的状态：任务是否执行完成
   bool get done => _done;
   // 任务的状态：任务是否取得成功
-  bool get success => _done && _image != null && !_error;
+  bool get success => _done && (_image != null && !_error || hasListener);
+  bool get error => _done && (_error || _image == null);
+  bool get release => !_error && _image == null && _done;
+  int get time => _time;
 
+  int _time = 0;
+  bool _error = false;
+  
   void setImage(ImageRefInfo? img, bool error) {
     if (_done) {
       Log.e('done', onlyDebug: false);
     }
-    // assert(!_done);
-    _done = true;
     _error = error;
-
+    _done = true;
+    _streamError = error || img == null;
     for (var listener in _list) {
       final callback = listener.onDone;
 
-      callback(img?.clone(), error, false);
+      callback(img?.clone(), _streamError, false);
     }
 
     if (_dispose) {
@@ -117,6 +122,9 @@ class ImageRefStream {
     } else {
       assert(!schedule);
       _image = img;
+      if (_streamError) {
+        _time = DateTime.now().millisecondsSinceEpoch;
+      }
       if (!hasListener && onRemove != null) onRemove!(this);
     }
   }
@@ -129,7 +137,7 @@ class ImageRefStream {
 
     if (!_done) return;
 
-    callback.onDone(_image?.clone(), _error, true);
+    callback.onDone(_image?.clone(), _streamError, true);
   }
 
   void removeListener(PictureListener callback) {

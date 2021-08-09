@@ -8,11 +8,15 @@ import 'package:useful_tools/event_queue.dart';
 void main() async {
   test('sync Future', () async {
     Future<int> _sync() {
-      return SynchronousFuture(1);
+      final x = SynchronousFuture(1);
+      print('_sync:${x.hashCode}');
+      return x;
     }
 
     Future<int> _syncAsync() async {
-      return SynchronousFuture(1);
+      final x = SynchronousFuture(1);
+      print('_syncAsync: ${x.hashCode}');
+      return x;
     }
 
     void _syncAsyncTest() async {
@@ -25,35 +29,35 @@ void main() async {
 
     R Function(T) _re<R, T>(Zone zone, ZoneDelegate parenDelegate, Zone self,
         R Function(T) callback) {
-      print('re: $callback');
+      // print('re: $callback');
       return parenDelegate.registerUnaryCallback<R, T>(zone, callback);
     }
 
     await runZoned(() async {
       print('start...');
+
+      /// [_Future._asyncComplete]
+      ///
+      /// 下面两个函数调用，返回的是[SynchronousFuture]
+      /// 会经过[_Future._chainFuture]
       final x = _sync();
-      print('..._sync');
+      print('..._sync:${x.hashCode}');
       final y = _syncAsync();
-      print('..._syncAsync');
+
+      /// [async] 修饰的函数会返回一个新[Future]对象
+      print('..._syncAsync:${y.hashCode}');
+
+      ///
       _syncAsyncTest();
+      print('_syncAsync e');
+
       final tf = _syncAsyncTestFuture();
-      print('_doe');
+      print('_doe:');
       expect(x is SynchronousFuture<int>, true, reason: '${x.runtimeType}');
       expect(y is Future<int>, true);
-      // print(t; static error: t: void
 
-      /// 尽管[_syncAsyncTestFuture]函数中的语句是同步执行的(本次事件循环)，
-      /// 但是本质上还是一个[Future],而当[Future]完成，会调用[scheduleMicrotask]设置返回值
-      ///
       print('releaseUI');
 
-      /// [_Future._addListener]
-      ///
-      /// 进入下次事件循环，[_Future]状态已改变，
-      ///
-      /// 注释此行，会有不一样的结果
-      /// 由于参数[computation] 为 null,所以
-      /// [Future.delayed] 是没有调用[scheduleMicrotask]的
       await releaseUI;
 
       tf.then((value) => print('done'));
@@ -66,6 +70,10 @@ void main() async {
               print(callback);
               parentDelegate.scheduleMicrotask(zone, callback);
             },
-            registerUnaryCallback: _re));
+            registerUnaryCallback: _re,
+            createTimer: (zone, parent, self, duration, callback) {
+              print('time....');
+              return parent.createTimer(zone, duration, callback);
+            }));
   });
 }

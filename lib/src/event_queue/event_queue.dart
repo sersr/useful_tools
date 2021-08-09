@@ -11,6 +11,7 @@ import 'future_any.dart';
 
 /// [_TaskEntry._run]
 typedef EventCallback<T> = FutureOr<T> Function();
+typedef EventRunCallback<T> = Future<void> Function(_TaskEntry<T> task);
 
 /// 以队列的形式进行并等待异步任务。
 ///
@@ -25,18 +26,47 @@ typedef EventCallback<T> = FutureOr<T> Function();
 /// 允许 [addOneEventTask], [addEventTask] 交叉使用
 class EventQueue {
   EventQueue({this.channels = 1});
-  EventQueue.none({this.channels = -1});
 
-  static EventQueue? _instance;
+  ///所有任务即时运行，[channels] 无限制
+  EventQueue.run({this.channels = -1});
+  final int channels;
 
-  static EventQueue get instance {
-    _instance ??= EventQueue();
-    return _instance!;
+  _ChannelState _getState() {
+    if (channels < 1) {
+      return _ChannelState.limited;
+    } else if (channels > 1) {
+      return _ChannelState.run;
+    } else {
+      return _ChannelState.one;
+    }
   }
 
-  static final iOQueue = EventQueue();
+  static const _zoneTask = 'eventTask';
 
-  final int channels;
+  // 运行任务
+  Future<void> eventRun(_TaskEntry task) {
+    return runZoned(task._run, zoneValues: {_zoneTask: task});
+  }
+
+  static _TaskEntry? get currentTask {
+    final _t = Zone.current[_zoneTask];
+    if (_t is _TaskEntry) return _t;
+  }
+
+  static final _queues = HashMap<ListKey, EventQueue>();
+  static final iOQueue = createEventQueue('ioQueue');
+
+  static EventQueue createEventQueue(key, {int channels = 1}) {
+    List list;
+    if (key is Iterable) {
+      list = [...key, channels];
+    } else {
+      list = [key, channels];
+    }
+    final listKey = ListKey(list);
+
+    return _queues.putIfAbsent(listKey, () => EventQueue(channels: channels));
+  }
 
   static SchedulerBinding get scheduler => SchedulerBinding.instance!;
 
@@ -44,30 +74,19 @@ class EventQueue {
 
   bool get isLast => _taskPool.isEmpty;
 
+  Future<void>? _runner;
+  Future<void>? get runner => _runner;
+
   Future<T> _addEventTask<T>(EventCallback<T> callback,
       {bool onlyLastOne = false}) {
-    final _task = _TaskEntry<T>(callback, this, onlyLastOne: onlyLastOne
-        // , objectKey: newKey
-        );
-    // final key = _task.key;
-
-    // if (!_taskPool.containsKey(key)) {
-    //   _taskPool[key] = _task;
-    // } else {
-    //   _task = _taskPool[key]! as _TaskEntry<T>;
-    // }
+    final _task = _TaskEntry<T>(
+        callback: callback, queue: this, onlyLastOne: onlyLastOne);
     _taskPool.add(_task);
-    assert(EventQueue.currentTask != _task, '如果想重新将当前任务安排进队列，');
-
     run();
     return _task.future;
   }
 
-  /// 安排任务
-  ///
-  /// 队列模式
-  ///
-  /// 不被忽略
+  /// 安排任务 队列模式 不被忽略
   Future<T> addEventTask<T>(EventCallback<T> callback, {Object? key}) =>
       _addEventTask<T>(callback);
 
@@ -81,69 +100,52 @@ class EventQueue {
   Future<T?> addOneEventTask<T>(EventCallback<T> callback, {Object? key}) =>
       _addEventTask<T?>(callback, onlyLastOne: true);
 
-  Future<void>? _runner;
-  Future<void>? get runner => _runner;
-
-  void run() {
+  void run() async {
     _runner ??= _run()..whenComplete(() => _runner = null);
   }
 
-  // @protected
-  // Future<void> _run() async {
-  //   /// 减少 [Future.wait] 带来的痛苦
-  //   /// 避免重复 forEach
-  //   final tasks = FutureAny();
+  /// 代码优化
+  /// 自动选择要调用的函数
+  late final EventRunCallback runImpl = _getRunCallback();
 
-  //   while (_taskPool.isNotEmpty) {
-  //     await releaseUI;
-
-  //     final task = _taskPool.values.first;
-
-  //     assert(() {
-  //       final keyFirst = _taskPool.keys.first;
-  //       return keyFirst == task.key;
-  //     }());
-
-  //     // 最后一个
-  //     final isEmpty = _taskPool.isEmpty;
-
-  //     if (!task.onlyLastOne || isEmpty) {
-  //       if (channels > 1) {
-  //         tasks.add(eventRun(task));
-
-  //         // 达到 channels 数           ||  最后一个
-  //         if (tasks.length >= channels || isEmpty) {
-  //           while (_taskPool.isEmpty || tasks.length >= channels) {
-  //             if (tasks.isEmpty) break;
-  //             await tasks.future;
-  //             await releaseUI;
-  //           }
-  //         }
-  //       } else {
-  //         await eventRun(task);
-  //       }
-  //     } else {
-  //       task.completed();
-  //     }
-  //     _taskPool.remove(task.key);
-  //   }
-
-  //   assert(tasks.isEmpty);
-  // }
-  late final _channelState = _channel();
-
-  _ChannelState _channel() {
-    if (channels < 1) {
-      return _ChannelState.limits;
-    } else if (channels > 1) {
-      return _ChannelState.run;
-    } else {
-      return _ChannelState.one;
+  EventRunCallback _getRunCallback() {
+    final _state = _getState();
+    switch (_state) {
+      case _ChannelState.limited:
+        return _limited;
+      case _ChannelState.run:
+        return _runAll;
+      default:
+        return eventRun;
     }
   }
 
-  /// 减少 forEach 次数
+  /// 与[channels]关系密切
   final tasks = FutureAny();
+
+  Future<void> _limited(_TaskEntry task) async {
+    tasks.add(eventRun(task));
+
+    // 达到 channels 数              ||  最后一个
+    while (tasks.length >= channels || _taskPool.isEmpty) {
+      if (tasks.isEmpty) break;
+      await tasks.any;
+      await releaseUI;
+    }
+  }
+
+  Future<void> _runAll(_TaskEntry task) async {
+    tasks.add(eventRun(task));
+
+    if (_taskPool.isEmpty) {
+      while (tasks.isNotEmpty) {
+        if (_taskPool.isNotEmpty) break;
+        await tasks.any;
+        await releaseUI;
+      }
+    }
+  }
+
   @protected
   Future<void> _run() async {
     while (_taskPool.isNotEmpty) {
@@ -151,66 +153,38 @@ class EventQueue {
 
       final task = _taskPool.removeFirst();
 
-      // 最后一个
-      final isEmpty = _taskPool.isEmpty;
-
-      if (!task.onlyLastOne || isEmpty) {
-        final _runTask = eventRun(task);
-        switch (_channelState) {
-          case _ChannelState.limits:
-            tasks.add(_runTask);
-
-            // 达到 channels 数           ||  最后一个
-            if (tasks.length >= channels || isEmpty) {
-              while (_taskPool.isEmpty || tasks.length >= channels) {
-                if (tasks.isEmpty) break;
-                await tasks.future;
-                await releaseUI;
-              }
-            }
-            break;
-          case _ChannelState.run:
-            tasks.add(_runTask);
-            if (isEmpty) {
-              while (tasks.isNotEmpty) {
-                if (_taskPool.isNotEmpty) break;
-                await tasks.future;
-                await releaseUI;
-              }
-            }
-            break;
-          default:
-            await _runTask;
-        }
+      //                      最后一个
+      if (!task.onlyLastOne || _taskPool.isEmpty) {
+        await runImpl(task);
       } else {
+        /// 任务被抛弃
         task.completed();
       }
     }
 
     assert(tasks.isEmpty);
   }
-
-  static const _zoneTask = 'eventTask';
-
-  // 运行任务
-  Future<void> eventRun(_TaskEntry task) {
-    return runZoned(task._run, zoneValues: {_zoneTask: task});
-  }
-
-  static _TaskEntry? get currentTask {
-    final _z = Zone.current[_zoneTask];
-    if (_z is _TaskEntry) return _z;
-  }
 }
 
 class _TaskEntry<T> {
-  _TaskEntry(this.callback, this._looper, {this.onlyLastOne = false});
+  _TaskEntry({
+    required this.callback,
+    required EventQueue queue,
+    this.onlyLastOne = false,
+  }) : _eventQueue = queue;
 
-  final EventQueue _looper;
+  /// 此任务所在的事件队列
+  final EventQueue _eventQueue;
+
+  /// 具体的任务回调
   final EventCallback<T> callback;
 
+  /// 可通过[EventQueue.currentTask]访问、修改；
+  /// 作为数据、状态等
   dynamic value;
 
+  /// [onlyLastOne] == true 并且不是任务队列的最后一个任务，才会被抛弃
+  /// 不管 [onlyLastOne] 为任何值，最后一个任务都会执行
   final bool onlyLastOne;
 
   final _completer = Completer<T>();
@@ -220,10 +194,7 @@ class _TaskEntry<T> {
   // 队列循环要等待的对象
   Completer<void>? _innerCompleter;
 
-  int _count = 0;
   void _innerCompleted() {
-    _count++;
-    Log.i('count: $_count');
     if (_innerCompleter != null) {
       assert(!_innerCompleter!.isCompleted);
       _innerCompleter!.complete();
@@ -231,14 +202,14 @@ class _TaskEntry<T> {
     }
   }
 
-  void _complete(T result) {
+  void _innerComplete(T result) {
     if (_innerCompleter != null) {
       _innerCompleted();
       completed(result);
     }
   }
 
-  void _completeError(Object error) {
+  void _innerCompleteError(Object error) {
     if (_innerCompleter != null) {
       _innerCompleted();
       completedError(error);
@@ -250,9 +221,10 @@ class _TaskEntry<T> {
     if (result is Future<T>) {
       assert(_innerCompleter == null);
       _innerCompleter ??= Completer<void>();
-      result.then(_complete, onError: _completeError);
+      result.then(_innerComplete, onError: _innerCompleteError);
       return _innerCompleter!.future;
     }
+    // 同步
     completed(result);
   }
 
@@ -264,13 +236,16 @@ class _TaskEntry<T> {
     _innerCompleted();
     scheduleMicrotask(() {
       if (_completed) return;
-      _looper._taskPool.addLast(this);
-      _looper.run();
+      _eventQueue._taskPool.add(this);
     });
   }
 
   bool _completed = false;
 
+  /// [result] == null 的情况
+  ///
+  /// 1. [T] 为 void 类型
+  /// 2. [onlyLastOne] == true 且被抛弃忽略
   void completed([T? result]) {
     if (_completed) return;
 
@@ -288,30 +263,17 @@ class _TaskEntry<T> {
 }
 
 enum _ChannelState {
+  /// 任务数量无限制
   run,
-  limits,
+
+  /// 数量限制
+  limited,
+
+  /// 单任务
   one,
 }
 
-// class _TaskKey<T> {
-//   _TaskKey(this._looper, this.callback, this.onlyLastOne, this.key);
-//   final EventQueue _looper;
-//   final EventCallback callback;
-//   final bool onlyLastOne;
-//   final Object? key;
-//   @override
-//   bool operator ==(Object other) {
-//     return identical(this, other) ||
-//         other is _TaskKey<T> &&
-//             callback == other.callback &&
-//             _looper == other._looper &&
-//             onlyLastOne == other.onlyLastOne &&
-//             key == other.key;
-//   }
-
-//   @override
-//   int get hashCode => hashValues(callback, _looper, onlyLastOne, key);
-// }
-
 Future<void> get releaseUI => release(Duration.zero);
+
+// 进入 事件循环
 Future<void> release(Duration time) => Future.delayed(time);

@@ -32,6 +32,8 @@ class TextCache {
   final _textRefDispose = <ListKey, _TextRef>{};
 
   final _textLooper = EventQueue();
+
+  /// [LinkedHashMap]
   final _textListeners = <ListKey, TextStream>{};
   final _textCaches = <ListKey, TextStream>{};
 
@@ -147,17 +149,17 @@ class TextCache {
 
       // await releaseUI;
       var error = false;
-      final isEmpty = stream.isEmpty;
+      final isNotEmpty = !stream.isEmpty;
 
       try {
-        if (!isEmpty) {
+        if (isNotEmpty) {
           await callback(innerGetTextRef, putIfAbsent);
         }
       } catch (e) {
         error = true;
       } finally {
         final infos = _list?.values;
-        // if (!isEmpty) await releaseUI;
+        if (isNotEmpty) await releaseUI;
         stream.setTextInfo(infos?.toList(), error);
       }
     });

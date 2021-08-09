@@ -5,31 +5,43 @@ class FutureAny {
 
   int get length => _tasks.length;
 
-  bool get isEmpty => length == 0;
-  bool get isNotEmpty => !isEmpty;
-  
-  Completer<void>? _completer;
+  bool get isEmpty => _tasks.isEmpty;
+  bool get isNotEmpty => _tasks.isNotEmpty;
 
-  Future? get future {
-    if (_tasks.isNotEmpty) _set();
+  Completer<void>? _completer;
+  Completer<void>? _completerWaitAll;
+
+  Future<void>? get any {
+    _set();
     return _completer?.future;
   }
 
-  Future? get waitAll async {
-    while (isNotEmpty) {
-      await future;
-    }
+  Future<void>? get wait {
+    _setWaitAll();
+    return _completerWaitAll?.future;
   }
 
   void _set() {
     if (_completer == null || _completer!.isCompleted) {
-      _completer = Completer<void>();
+      if (isNotEmpty) _completer = Completer<void>();
+    }
+  }
+
+  void _setWaitAll() {
+    if (_completerWaitAll == null || _completerWaitAll!.isCompleted) {
+      if (isNotEmpty) _completerWaitAll = Completer<void>();
     }
   }
 
   void _completed() {
+    /// any
     if (_completer?.isCompleted == false) {
-      _completer?.complete();
+      _completer!.complete();
+    }
+
+    /// waitAll
+    if (isEmpty && _completerWaitAll?.isCompleted == false) {
+      _completerWaitAll!.complete();
     }
   }
 

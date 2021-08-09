@@ -44,19 +44,21 @@ class ImageRefCache {
     );
   }
 
-  void printDone() {
+  int printDone() {
     var count = 0;
     final values = _imageRefs.values;
     for (final p in values) {
       if (!p.done) count += 1;
     }
-    Log.i('steram !done: $count', onlyDebug: false);
+    // Log.i('steram !done: $count', onlyDebug: false);
+    return count;
   }
 
   final _imageRefs = <ListKey, ImageRefStream>{};
-  final _imgQueue = EventQueue.none();
+  final _imgQueue = EventQueue.run();
   final _loadQueue = EventQueue();
   final _pathQueue = EventQueue(channels: 6);
+
   static const _defaultSizeBytes = 80 << 20;
 
   var _maxSizeBytes = _defaultSizeBytes;
@@ -86,6 +88,12 @@ class ImageRefCache {
 
   final _imageRefCaches = <ListKey, ImageRefStream>{};
 
+  static int timeWaitS = 1000 * 30;
+
+  bool timeOut(int time) {
+    return time + timeWaitS <= DateTime.now().millisecondsSinceEpoch;
+  }
+
   ImageRefStream? getImage(ListKey key) {
     var listener = _imageRefs[key];
 
@@ -98,7 +106,14 @@ class ImageRefCache {
     }
 
     assert(!_imageRefCaches.containsKey(key));
-    assert(listener == null || listener.success || !listener.done);
+
+    if (listener != null) {
+      if (listener.error && timeOut(listener.time)) {
+        _imageRefs.remove(key);
+        listener = null;
+      }
+    }
+
     return listener;
   }
 
@@ -109,9 +124,9 @@ class ImageRefCache {
     _dis(_map);
   }
 
-  void _dis(List<ImageRefStream> streams) async {
+  void _dis(List<ImageRefStream> streams) {
     for (final stream in streams) {
-      await Future.delayed(Duration.zero, () => stream.dispose());
+      stream.dispose();
     }
   }
 
@@ -121,6 +136,7 @@ class ImageRefCache {
             Future<void> Function(ui.Image? image, bool error) setImage)
         callback,
   }) {
+    Log.w(keys);
     final key = ListKey(keys);
     final _img = getImage(key);
 
@@ -132,12 +148,9 @@ class ImageRefCache {
       final _stream = _imageRefs[key];
       if (_stream == stream) _imageRefs.remove(key);
 
-      if (stream.success) {
-        if (_stream != null) {
-          deal();
-
-          _imageRefCaches[key] = stream;
-        }
+      deal();
+      if (_stream != null && !stream.release) {
+        _imageRefCaches[key] = stream;
       } else {
         stream.dispose();
       }
@@ -186,8 +199,6 @@ class ImageRefCache {
       }
       await releaseUI;
       imageRefInfo?.dispose();
-    }).then((_) {
-      assert(_done);
     });
 
     return stream;
@@ -246,7 +257,7 @@ class ImageRefCache {
 
         /// 添加到队列末尾
         EventQueue.currentTask!.addLast();
-        // assert(task is Future<T> || Log.w('task is! Future<T>'));
+
         break;
       case LoadStatus.active:
         return callback();
@@ -261,13 +272,13 @@ class ImageRefCache {
       required double cacheHeight,
       required PathFuture getPath,
       BoxFit fit = BoxFit.fitHeight}) {
-    return preCacheBuilder([url, cacheWidth, cacheHeight, fit],
+    return preCacheBuilder([url, cacheWidth, cacheHeight, fit, 'preCacheUrl'],
         callback: (deferred, setImage) async {
       var _done = false;
       final w = ui.window;
       void _sDone() {
         _done = true;
-        setImage(null, true);
+        setImage(null, false);
       }
 
       final path = await _pathQueue.addEventTask(() => _def(deferred, () async {
@@ -275,10 +286,11 @@ class ImageRefCache {
             // 手动处理失败的情况
             if (_path == null) {
               Log.w('_path == null', onlyDebug: false);
-              _sDone();
+              _done = true;
+              setImage(null, true);
             }
             return _path;
-          }, _sDone));
+          }, _sDone, wait: () => EventQueue.scheduler.endOfFrame));
       if (path == null) {
         assert(_done);
         return;
@@ -286,21 +298,6 @@ class ImageRefCache {
 
       final f = File(path);
       Future<void> _imageTask() async {
-        // await EventQueue.scheduler.endOfFrame;
-        // final _load = deferred();
-        // switch (_load) {
-        //   case LoadStatus.defLoad:
-        //     scheduleMicrotask(_imageTask);
-        //     return;
-        //   case LoadStatus.inactive:
-        //     _sDone();
-        //     return;
-        //   default:
-        // }
-        // String? path = await getPath(url);
-
-        // 所有任务都已处理
-
         ui.Image? image;
         var error = false;
 
@@ -326,20 +323,85 @@ class ImageRefCache {
             await EventQueue.scheduler.endOfFrame;
             await setImage(local, error);
           });
-          // await releaseUI;
         }
       }
 
       // 手动处理失败的情况
       if (await f.exists()) {
-      // scheduleMicrotask(_imageTask);
         await _imgQueue.addEventTask(() => _def(deferred, _imageTask, _sDone,
             wait: () => EventQueue.scheduler.endOfFrame));
       } else {
-      Log.w('file no exists.', onlyDebug: false);
+        Log.w('file no exists.', onlyDebug: false);
         _sDone();
       }
       assert(_done);
+    });
+  }
+
+  /// 直接加载 [Uint8List] 数据
+  ImageRefStream preCacheUrlMemory(key,
+      {required double cacheWidth,
+      required double cacheHeight,
+      required Unit8ListFuture getPath,
+      BoxFit fit = BoxFit.fitHeight}) {
+    final keys = key is Iterable ? key : [key];
+    return preCacheBuilder(
+        [...keys, cacheWidth, cacheHeight, fit, 'preCacheUrlMemory'],
+        callback: (deferred, setImage) async {
+      var _done = false;
+      final w = ui.window;
+      void _sDone() {
+        _done = true;
+        setImage(null, false);
+      }
+
+      final bytes =
+          await _pathQueue.addEventTask(() => _def(deferred, () async {
+                final bytes = await getPath();
+                // 手动处理失败的情况
+                if (bytes == null) {
+                  _done = true;
+                  setImage(null, true);
+                }
+                return bytes;
+              }, _sDone));
+
+      if (bytes == null) {
+        assert(_done);
+        return;
+      }
+
+      Future<void> _imageTask() async {
+        ui.Image? image;
+        var error = false;
+
+        try {
+          await releaseUI;
+
+          if (fit == BoxFit.fitHeight) {
+            image = await _decode(bytes,
+                cacheHeight: (cacheHeight * w.devicePixelRatio).toInt());
+          } else {
+            image = await _decode(bytes,
+                cacheWidth: (cacheWidth * w.devicePixelRatio).toInt());
+          }
+        } catch (e) {
+          /// 图片解码失败
+          Log.e('$bytes /n $e', onlyDebug: false);
+          error = true;
+        } finally {
+          _done = true;
+          final local = image?.clone();
+          image?.dispose();
+          _loadQueue.addEventTask(() async {
+            await EventQueue.scheduler.endOfFrame;
+            await setImage(local, error);
+          });
+        }
+      }
+
+      await _imgQueue.addEventTask(() => _def(deferred, _imageTask, _sDone,
+          wait: () => EventQueue.scheduler.endOfFrame));
     });
   }
 
@@ -351,6 +413,7 @@ class ImageRefCache {
 }
 
 typedef PathFuture = FutureOr<String?> Function(String url);
+typedef Unit8ListFuture = FutureOr<Uint8List?> Function();
 enum LoadStatus {
   defLoad,
   inactive,
