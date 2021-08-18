@@ -136,7 +136,6 @@ class ImageRefCache {
             Future<void> Function(ui.Image? image, bool error) setImage)
         callback,
   }) {
-    Log.w(keys);
     final key = ListKey(keys);
     final _img = getImage(key);
 
@@ -146,11 +145,15 @@ class ImageRefCache {
       assert(!_imageRefCaches.containsKey(key));
 
       final _stream = _imageRefs[key];
-      if (_stream == stream) _imageRefs.remove(key);
-
       deal();
-      if (_stream != null && !stream.release) {
-        _imageRefCaches[key] = stream;
+      if (_stream == stream) {
+        _imageRefs.remove(key);
+
+        if (_stream != null && stream.save) {
+          _imageRefCaches[key] = stream;
+        } else {
+          stream.dispose();
+        }
       } else {
         stream.dispose();
       }
@@ -241,7 +244,7 @@ class ImageRefCache {
       }
 
       _imgQueue.addEventTask(
-          () => _def(defLoad, _getData, () => setImage(null, true)));
+          () => _def(defLoad, _getData, () => setImage(null, false)));
     });
   }
 

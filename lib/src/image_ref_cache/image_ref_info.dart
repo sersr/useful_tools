@@ -95,14 +95,19 @@ class ImageRefStream {
   // 任务的状态：任务是否执行完成
   bool get done => _done;
   // 任务的状态：任务是否取得成功
-  bool get success => _done && (_image != null && !_error || hasListener);
+  bool get success => _done && _image != null;
+  bool get ignore => _done && _image == null && !_error;
+  bool get failed => _done && _image == null && _error;
+
+  // 成功或失败都要保存           success      || failed
+  bool get save => _done && (_image != null || _error);
   bool get error => _done && (_error || _image == null);
-  bool get release => !_error && _image == null && _done;
+
   int get time => _time;
 
   int _time = 0;
   bool _error = false;
-  
+
   void setImage(ImageRefInfo? img, bool error) {
     if (_done) {
       Log.e('done', onlyDebug: false);

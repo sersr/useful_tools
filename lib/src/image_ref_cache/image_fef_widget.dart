@@ -37,7 +37,7 @@ class ImageRefRenderBox extends RenderBox {
       return constraints
           .constrainSizeAndAttemptToPreserveAspectRatio(_info!.size);
     }
-    return constraints.biggest;
+    return constraints.smallest;
   }
 
   @override
@@ -46,7 +46,7 @@ class ImageRefRenderBox extends RenderBox {
       size =
           constraints.constrainSizeAndAttemptToPreserveAspectRatio(_info!.size);
     } else {
-      size = constraints.biggest;
+      size = constraints.smallest;
     }
   }
 

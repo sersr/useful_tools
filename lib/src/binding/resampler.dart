@@ -97,18 +97,20 @@ class Resampler {
     final list = _queuedEvents.toList();
     PointerEvent? _last;
     PointerEvent? _first;
+
     for (var i = list.length - 1; i >= 0; i--) {
-      final event = list.elementAt(i);
+      final event = list[i];
       if (event.timeStamp <= vsyncTime) {
         _last = event;
         final _fi = i - 1;
         if (_fi < list.length && _fi >= 0) {
-          _first = list.elementAt(_fi);
+          _first = list[_fi];
         }
         _first ??= _last;
         break;
       }
     }
+
     lastEvent = _last;
     firstEvent = _first ?? _last;
   }

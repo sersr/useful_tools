@@ -7,11 +7,13 @@ import '../../event_queue.dart';
 
 class TextCache {
   void clear() {
-    clearDispose(_textCaches);
     clearDispose(_textListeners);
 
-    clearDisposeRef(_textRefDispose);
-    clearDisposeRef(_textRef);
+    final cLength = _textRefCaches.length;
+    clearDisposeRef(_textRefCaches);
+    if (cLength < 30) {
+      clearDisposeRef(_textRef);
+    }
   }
 
   void clearDispose(Map<ListKey, TextStream> map) {
@@ -29,40 +31,27 @@ class TextCache {
   }
 
   final _textRef = <ListKey, _TextRef>{};
-  final _textRefDispose = <ListKey, _TextRef>{};
+  final _textRefCaches = <ListKey, _TextRef>{};
 
   final _textLooper = EventQueue();
 
   /// [LinkedHashMap]
   final _textListeners = <ListKey, TextStream>{};
-  final _textCaches = <ListKey, TextStream>{};
 
   TextStream? getListener(ListKey key) {
-    var listener = _textListeners[key];
-
-    if (listener == null) {
-      listener = _textCaches.remove(key);
-
-      if (listener != null) {
-        _textListeners[key] = listener;
-      }
-    }
-
-    assert(!_textCaches.containsKey(key));
-
-    return listener;
+    return _textListeners[key];
   }
 
   TextInfo? getTextRef(ListKey key) {
     var textRef = _textRef[key];
     if (textRef == null) {
-      textRef = _textRefDispose.remove(key);
+      textRef = _textRefCaches.remove(key);
       if (textRef != null) {
+        assert(Log.i('move textRef'));
+        textRef.reset();
         _textRef[key] = textRef;
       }
     }
-
-    assert(!_textCaches.containsKey(key));
 
     if (textRef != null) {
       assert(!textRef._disposed);
@@ -74,93 +63,75 @@ class TextCache {
     final key = ListKey(keys);
 
     final _text = getListener(key);
-    if (_text != null) {
-      assert(_text.success || !_text._done);
-      return _text;
-    }
+    if (_text != null) return _text;
 
     final stream = _textListeners[key] = TextStream(onRemove: (stream) {
-      assert(!_textCaches.containsKey(key));
-
-      if (_textListeners.containsKey(key)) {
-        final _stream = _textListeners.remove(key);
-        assert(_stream == stream);
-        if (stream.success) {
-          if (_textCaches.length > 150) {
-            final keyFirst = _textCaches.keys.first;
-            final _text = _textCaches.remove(keyFirst);
-            _text!.dispose();
-          }
-
-          _textCaches[key] = stream;
-        } else {
-          stream.dispose();
-        }
-      } else {
-        stream.dispose();
+      final _stream = _textListeners[key];
+      if (stream == _stream) {
+        _textListeners.remove(key);
       }
+      stream.dispose();
     });
 
     _textLooper.addEventTask(() async {
-      // caches
-      Map<ListKey, TextInfo>? _list;
+      // innerCaches
+      Map<ListKey, TextInfo>? _map;
+      List<TextInfo> _list = [];
 
-      TextInfo? innerGetTextRef(List keys) {
-        final key = ListKey(keys);
-        var info = _list![key]?.clone();
+      TextInfo? innerGetTextRef(ListKey key) {
+        var info = _map![key]?.clone();
         info ??= getTextRef(key);
         return info;
       }
 
+      /// read only
+      ///
       /// 返回的 [TextInfo] 不能调用 dispose
-      Future<TextInfo> putIfAbsent(
-          List keys, TextPainterBuilder builder) async {
+      TextInfo putIfAbsentTextRef(List keys, TextPainterBuilder builder) {
         final key = ListKey(keys);
-        _list ??= <ListKey, TextInfo>{};
+        _map ??= <ListKey, TextInfo>{};
 
-        var _textInfo = innerGetTextRef(keys);
-
+        var _textInfo = innerGetTextRef(key);
         if (_textInfo == null) {
+          assert(!_map!.containsKey(key));
           final _built = builder();
-          TextPainter _textPainter;
-          if (_built is Future) {
-            _textPainter = await _built;
-          } else {
-            _textPainter = _built;
-          }
 
-          final _text = _textRef[key] = _TextRef(_textPainter, (ref) {
-            if (_textRef.containsKey(key)) {
-              final text = _textRef.remove(key);
-              assert(text == ref, '$text, $ref');
+          final _text = _textRef[key] = _TextRef(_built, (ref) {
+            assert(!_textRefCaches.containsKey(key));
 
-              if (_textRefDispose.length > 150) {
-                final keyFirst = _textRefDispose.keys.first;
-                _textRefDispose.remove(keyFirst);
+            final text = _textRef[key];
+            // 有可能不是同一个对象
+            if (text == ref) {
+              _textRef.remove(key);
+              if (_textRefCaches.length > 100) {
+                final keyFirst = _textRefCaches.keys.first;
+                _textRefCaches.remove(keyFirst);
               }
-              _textRefDispose[key] = ref;
+              _textRefCaches[key] = ref;
             }
           });
-          _textInfo = TextInfo.text(_text);
+          _textInfo = _map![key] = TextInfo.text(_text);
         }
-        _list![key] = _textInfo;
+        _list.add(_textInfo);
         return _textInfo;
       }
 
-      // await releaseUI;
-      var error = false;
-      final isNotEmpty = !stream.isEmpty;
+      await releaseUI;
 
+      if (stream.isEmpty) {
+        _map?.clear();
+        _list.forEach(TextInfo.disposeTextInfo);
+        stream.setTextInfo(null);
+        return;
+      }
       try {
-        if (isNotEmpty) {
-          await callback(innerGetTextRef, putIfAbsent);
-        }
-      } catch (e) {
-        error = true;
+        await callback(putIfAbsentTextRef);
+      } catch (s, e) {
+        Log.e('...error:$s\n $e');
       } finally {
-        final infos = _list?.values;
-        if (isNotEmpty) await releaseUI;
-        stream.setTextInfo(infos?.toList(), error);
+        _map?.clear();
+        await releaseUI;
+        stream.setTextInfo(_list.toList());
       }
     });
 
@@ -168,14 +139,11 @@ class TextCache {
   }
 }
 
-typedef FindTextInfo = TextInfo? Function(List keys);
-typedef PutIfAbsentText = Future<TextInfo> Function(
-    List keys, TextPainterBuilder text);
+typedef PutIfAbsentText = TextInfo Function(List keys, TextPainterBuilder text);
 
-typedef TextLayoutCallback = Future<void> Function(
-    FindTextInfo find, PutIfAbsentText putIfAbsent);
+typedef TextLayoutCallback = Future<void> Function(PutIfAbsentText putIfAbsent);
 
-typedef TextPainterBuilder = FutureOr<TextPainter> Function();
+typedef TextPainterBuilder = TextPainter Function();
 
 typedef TextStreamRemove = void Function(TextStream);
 
@@ -186,26 +154,24 @@ class TextStream {
   List<TextInfo>? _textInfos;
 
   bool _done = false;
-  bool _error = false;
 
-  bool get success => _textInfos != null && !_error && _done;
+  bool get success => _textInfos != null && _done;
 
-  void setTextInfo(List<TextInfo>? textInfos, bool error) {
+  void setTextInfo(List<TextInfo>? textInfos) {
     assert(!_done);
 
     _done = true;
-    _error = error;
 
     for (final listener in _lists) {
-      listener(_map(textInfos), error);
+      assert(textInfos != null && textInfos.isNotEmpty);
+      listener(_map(textInfos), false);
     }
 
     if (disposed) {
-      textInfos?.forEach(disposeTextInfo);
+      textInfos?.forEach(TextInfo.disposeTextInfo);
     } else {
-      assert(!_schedule);
       _textInfos = textInfos;
-      if (_lists.isEmpty) onRemove(this);
+      _sech();
     }
   }
 
@@ -214,7 +180,7 @@ class TextStream {
     _lists.add(listener);
     if (!_done) return;
 
-    listener(_map(_textInfos), _error);
+    listener(_map(_textInfos), true);
   }
 
   List<TextInfo>? _map(List<TextInfo>? infos) {
@@ -224,12 +190,16 @@ class TextStream {
   void removeListener(ListenerFunction listener) {
     _lists.remove(listener);
 
-    if (_lists.isEmpty && !disposed && _done) {
+    _sech();
+  }
+
+  void _sech() {
+    if (isEmpty && !disposed && _done) {
       if (_schedule) return;
       // 启动微任务
       scheduleMicrotask(() {
         _schedule = false;
-        if (_lists.isEmpty && !disposed) onRemove(this);
+        if (isEmpty && !disposed) onRemove(this);
       });
       _schedule = true;
     }
@@ -239,29 +209,28 @@ class TextStream {
 
   bool _schedule = false;
   bool disposed = false;
+
+  @visibleForTesting
   void dispose() {
-    // assert(!disposed);
-    if (disposed) {
-      Log.e('disposed', onlyDebug: false);
-      return;
-    }
+    assert(!disposed, Log.e('disposed', onlyDebug: false));
+
     disposed = true;
-    _textInfos?.forEach(disposeTextInfo);
+    _textInfos?.forEach(TextInfo.disposeTextInfo);
     _textInfos = null;
   }
 }
 
-typedef ListenerFunction = void Function(List<TextInfo>? textInfo, bool error);
-
-void disposeTextInfo(TextInfo info) {
-  info.dispose();
-}
+typedef ListenerFunction = void Function(List<TextInfo>? textInfo, bool sync);
 
 class TextInfo {
   TextInfo.text(_TextRef _text) : this._(_text);
 
   TextInfo._(this._text) {
     _text._handles.add(this);
+  }
+
+  static void disposeTextInfo(TextInfo info) {
+    info.dispose();
   }
 
   final _TextRef _text;
@@ -283,10 +252,7 @@ class TextInfo {
 
   bool _dispose = false;
   void dispose() {
-    if (_dispose) {
-      Log.e('error: textInfo...', onlyDebug: false);
-      return;
-    }
+    assert(!_dispose, Log.e('error: textInfo...', onlyDebug: false));
 
     _dispose = true;
     _text._handles.remove(this);
@@ -299,14 +265,21 @@ class TextInfo {
 // 管理一个引用
 class _TextRef {
   _TextRef(this.text, this.onDispose);
+
   final TextPainter text;
   final void Function(_TextRef ref) onDispose;
 
   final _handles = <TextInfo>{};
 
   bool _disposed = false;
+
+  void reset() {
+    _disposed = false;
+  }
+
   void dispose() {
     assert(!_disposed);
+
     _disposed = true;
     onDispose(this);
   }

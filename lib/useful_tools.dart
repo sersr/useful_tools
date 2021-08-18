@@ -7,3 +7,4 @@ export 'image_ref_cache.dart';
 export 'text_cache.dart';
 export 'binding.dart';
 export 'widgets.dart';
+export 'extensions.dart';

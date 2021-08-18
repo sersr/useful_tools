@@ -22,12 +22,16 @@ class FutureAny {
   }
 
   void _set() {
+    assert(_completer == null || !_completer!.isCompleted);
+
     if (_completer == null || _completer!.isCompleted) {
       if (isNotEmpty) _completer = Completer<void>();
     }
   }
 
   void _setWaitAll() {
+    assert(_completerWaitAll == null || !_completerWaitAll!.isCompleted);
+
     if (_completerWaitAll == null || _completerWaitAll!.isCompleted) {
       if (isNotEmpty) _completerWaitAll = Completer<void>();
     }
@@ -35,13 +39,17 @@ class FutureAny {
 
   void _completed() {
     /// any
-    if (_completer?.isCompleted == false) {
+    if (_completer != null) {
+      assert(!_completer!.isCompleted);
       _completer!.complete();
+      _completer = null;
     }
 
     /// waitAll
-    if (isEmpty && _completerWaitAll?.isCompleted == false) {
+    if (isEmpty && _completerWaitAll != null) {
+      assert(!_completerWaitAll!.isCompleted);
       _completerWaitAll!.complete();
+      _completerWaitAll = null;
     }
   }
 

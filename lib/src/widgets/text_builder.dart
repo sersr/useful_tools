@@ -38,13 +38,14 @@ class _TextBuilderState extends State<TextBuilder> {
   }
 
   List<TextInfo>? textInfos;
-  bool _error = false;
+  bool _sync = false;
 
   void _subText() {
     assert(textCache != null, 'CacheBinding 没有绑定');
     final all = textCache!.putIfAbsent(widget.keys, widget.layout);
 
     if (all != _textStream) {
+      // 避免调用无用的微任务操作
       _textStream?.removeListener(onTextListener);
       all.addListener(onTextListener);
       _textStream = all;
@@ -53,23 +54,23 @@ class _TextBuilderState extends State<TextBuilder> {
 
   TextStream? _textStream;
 
-  void onTextListener(List<TextInfo>? infos, bool error) {
+  void onTextListener(List<TextInfo>? infos, bool sync) {
     setState(() {
-      textInfos?.forEach(disposeTextInfo);
+      textInfos?.forEach(TextInfo.disposeTextInfo);
       textInfos = infos;
-      _error = error;
+      _sync = sync;
     });
   }
 
   @override
   void dispose() {
     super.dispose();
-    textInfos?.forEach(disposeTextInfo);
+    textInfos?.forEach(TextInfo.disposeTextInfo);
     _textStream?.removeListener(onTextListener);
   }
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder(textInfos, _error);
+    return widget.builder(textInfos, _sync);
   }
 }

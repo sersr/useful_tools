@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'dart:math' as math;
@@ -10,26 +11,32 @@ abstract class Log {
 
   static int functionLength = 24;
 
-  static bool i(Object? info, {bool showPath = true, bool onlyDebug = true}) {
-    return _log(Log.info, info, StackTrace.current, showPath, onlyDebug);
+  static bool i(Object? info,
+      {bool showPath = true, bool onlyDebug = true, Zone? zone}) {
+    return _log(Log.info, info, StackTrace.current, showPath, onlyDebug, zone);
   }
 
-  static bool w(Object? warn, {bool showPath = true, bool onlyDebug = true}) {
-    return _log(Log.warn, warn, StackTrace.current, showPath, onlyDebug);
+  static bool w(Object? warn,
+      {bool showPath = true, bool onlyDebug = true, Zone? zone}) {
+    return _log(Log.warn, warn, StackTrace.current, showPath, onlyDebug, zone);
   }
 
-  static bool e(Object? error, {bool showPath = true, bool onlyDebug = true}) {
-    return _log(Log.error, error, StackTrace.current, showPath, onlyDebug);
+  static bool e(Object? error,
+      {bool showPath = true, bool onlyDebug = true, Zone? zone}) {
+    return _log(
+        Log.error, error, StackTrace.current, showPath, onlyDebug, zone);
   }
 
   static bool log(int lv, Object? message,
-      {bool showPath = true, bool onlyDebug = true}) {
-    return _log(lv, message, StackTrace.current, showPath, onlyDebug);
+      {bool showPath = true, bool onlyDebug = true, Zone? zone}) {
+    return _log(lv, message, StackTrace.current, showPath, onlyDebug, zone);
   }
 
   static bool _log(int lv, Object? message, StackTrace stackTrace,
-      bool showPath, bool onlyDebug) {
+      bool showPath, bool onlyDebug,
+      [Zone? zone]) {
     if (message == null || (!kDebugMode && onlyDebug)) return true;
+    zone ??= Zone.current;
     var addMsg = '';
 
     var path = '', name = '';
@@ -76,7 +83,7 @@ abstract class Log {
     if (showPath) addMsg = '$addMsg $path';
 
     // ignore: avoid_print
-    print(addMsg);
+    zone.print(addMsg);
     return true;
   }
 }
