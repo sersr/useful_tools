@@ -74,6 +74,33 @@ class EventQueue {
 
   Future<void>? _runner;
   Future<void>? get runner => _runner;
+  Future<T> _addEventTask<T>(EventCallback<T> callback,
+      {bool onlyLastOne = false, Object? taskKey}) {
+    final _task = _TaskEntry<T>(
+      queue: this,
+      taskKey: taskKey,
+      callback: callback,
+      onlyLastOne: onlyLastOne,
+    );
+    _taskPool.add(_task);
+    final key = _task.taskKey;
+    final future = _task.future;
+    if (key != null) {
+      final keyList = _keyEvents.putIfAbsent(key, () => <_TaskEntry>[]);
+      if (keyList.isNotEmpty) {
+        _task._setIgnore(keyList.first.ignore);
+      }
+      keyList.add(_task);
+      future.whenComplete(() {
+        keyList.remove(_task);
+        if (keyList.isEmpty) {
+          _keyEvents.remove(key);
+        }
+      });
+    }
+    run();
+    return future;
+  }
 
   /// 永远不要在单通道中(channels == 1)等待另一个任务
   /// 同样不要在任务中调用`await runner`
@@ -94,33 +121,22 @@ class EventQueue {
   ///
   /// events.addEventTask(() async {
   ///   await ...
-  ///   // 在这种情况下，不会出错
+  ///   // 如果删除`await`，不会出错
   ///   _load();
   /// });
   /// ```
-  Future<T> _addEventTask<T>(EventCallback<T> callback,
-      {bool onlyLastOne = false}) {
-    final _task = _TaskEntry<T>(
-        callback: callback, queue: this, onlyLastOne: onlyLastOne);
-    _taskPool.add(_task);
-    run();
-    return _task.future;
-  }
+  Future<T> addEventTask<T>(EventCallback<T> callback, {Object? taskKey}) =>
+      _addEventTask(callback, taskKey: taskKey);
 
-  /// 安排任务 队列模式 不被忽略
-  Future<T> addEventTask<T>(EventCallback<T> callback) =>
-      _addEventTask(callback);
-
-  // Future<dynamic> addSafeEventTask<T>(EventCallback<T> callback) =>
-  //     _addEventTask(callback);
-
-  /// [onlyLastOne] 模式
-  ///
   /// 如果该任务在队列中，并且不是最后一个，那么将被抛弃。
+  /// 如果即将要运行的任务与队列中最后一个任务拥有相同的[taskKey]，那么也不会被抛弃，并且会即时
+  /// 更改队列中同类型任务的状态，注意如果再次有任务插入并且[taskKey]与之不同，状态也会再次改变
   ///
   /// 无法抛弃正在运行中的任务。
-  Future<T?> addOneEventTask<T>(EventCallback<T> callback) =>
-      _addEventTask(callback, onlyLastOne: true);
+  ///
+  /// 返回的值可能为 null
+  Future<T?> addOneEventTask<T>(EventCallback<T> callback, {Object? taskKey}) =>
+      _addEventTask(callback, onlyLastOne: true, taskKey: taskKey);
 
   void run() async {
     _runner ??= _run()..whenComplete(() => _runner = null);
@@ -143,7 +159,7 @@ class EventQueue {
 
   /// 与[channels]关系密切
   final tasks = FutureAny();
-
+  final _keyEvents = <Object, List<_TaskEntry>>{};
   Future<void> _limited(_TaskEntry task) async {
     tasks.add(eventRun(task));
 
@@ -173,11 +189,43 @@ class EventQueue {
       await releaseUI;
 
       final task = _taskPool.removeFirst();
-
       //                      最后一个
       if (!task.onlyLastOne || _taskPool.isEmpty) {
+        // 最后一个不管怎样都会执行
+        assert(!task.ignore || _taskPool.isEmpty);
+
         await _runImpl(task);
       } else {
+        final taskKey = task.taskKey;
+        if (taskKey != null) {
+          assert(_keyEvents.containsKey(taskKey));
+          final taskList = _keyEvents[taskKey]!;
+
+          // _taskPool.isNotEmpty
+          final last = _taskPool.last;
+
+          if (last.taskKey == task.taskKey) {
+            if (taskList.first.ignore) {
+              for (var t in taskList) {
+                t._setIgnore(false);
+              }
+            }
+            assert(!taskList.any((t) => t.ignore), '可能哪个地方错误了？');
+          } else {
+            if (!taskList.first.ignore) {
+              for (var t in taskList) {
+                t._setIgnore(true);
+              }
+            }
+            assert(!taskList.any((t) => !t.ignore), '可能哪个地方错误了？');
+          }
+          await releaseUI;
+        }
+        if (!task.ignore) {
+          await _runImpl(task);
+          continue;
+        }
+
         /// 任务被抛弃
         task.completed();
       }
@@ -191,6 +239,7 @@ class _TaskEntry<T> {
   _TaskEntry({
     required this.callback,
     required EventQueue queue,
+    this.taskKey,
     this.onlyLastOne = false,
   }) : _eventQueue = queue;
 
@@ -203,10 +252,20 @@ class _TaskEntry<T> {
   /// 可通过[EventQueue.currentTask]访问、修改；
   /// 作为数据、状态等
   dynamic value;
+  final Object? taskKey;
 
   /// [onlyLastOne] == true 并且不是任务队列的最后一个任务，才会被抛弃
   /// 不管 [onlyLastOne] 为任何值，最后一个任务都会执行
   final bool onlyLastOne;
+  late bool _ignore = onlyLastOne;
+
+  bool get ignore => _ignore;
+
+  void _setIgnore(bool v) {
+    if (onlyLastOne) {
+      _ignore = v;
+    }
+  }
 
   final _completer = Completer<T>();
 
@@ -271,8 +330,8 @@ class _TaskEntry<T> {
     if (_completed) return;
 
     _completed = true;
-
-    _completer.complete(result);
+    // 应该让等待的代码块在下一次事件循环中执行
+    Timer.run(() => _completer.complete(result));
   }
 
   void completedError(Object error) {
@@ -294,10 +353,30 @@ enum _ChannelState {
   one,
 }
 
-// Future<void> get releaseUI => release(Duration.zero);
+/// 进入 事件循环，
 Future<void> get releaseUI => Future(_empty);
 
-/// 进入 事件循环
+// Future<void> get releaseUI => release(Duration.zero);
 Future<void> release(Duration time) => Future.delayed(time);
 
 void _empty() {}
+
+extension EventsPush<T> on FutureOr<T> Function() {
+  Future<T> pushWith({Object? eventKey, Object? taskKey}) {
+    return EventQueue.createEventQueue(eventKey)
+        .addEventTask(this, taskKey: taskKey);
+  }
+
+  Future<T?> pushOneWith({Object? eventKey, Object? taskKey}) {
+    return EventQueue.createEventQueue(eventKey)
+        .addOneEventTask(this, taskKey: taskKey);
+  }
+
+  Future<T> push(EventQueue events, {Object? taskKey}) {
+    return events.addEventTask(this, taskKey: taskKey);
+  }
+
+  Future<T?> pushOne(EventQueue events, {Object? taskKey}) {
+    return events.addOneEventTask(this, taskKey: taskKey);
+  }
+}

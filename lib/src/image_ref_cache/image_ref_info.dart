@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
-import 'package:meta/meta.dart';
 
 import '../../common.dart';
 
@@ -13,6 +11,7 @@ class ImageRefInfo {
   }
   final _ImageRef _imageRef;
   ui.Image get image => _imageRef.rawImage;
+  
   void drawImageRef(
       ui.Canvas canvas, ui.Rect src, ui.Rect dst, ui.Paint paint) {
     assert(!disposed);
@@ -38,11 +37,9 @@ class ImageRefInfo {
 
   bool get disposed => _imageRef._dispose;
 
-  /// 可以通过[hashCode]标识查看[_imageRef]是否 得到释放
   void dispose() {
     _imageRef._handles.remove(this);
-    // assert(Log.w(
-    //     'image handle: ${_imageRef._handles.length} #${_imageRef.hashCode}'));
+
     if (_imageRef._handles.isEmpty) {
       _imageRef.dispose();
     }
@@ -54,11 +51,6 @@ class _ImageRef {
   final ui.Image rawImage;
 
   final Set<ImageRefInfo> _handles = <ImageRefInfo>{};
-
-  // void add(ImageRefInfo info) {
-  //   assert(!_dispose);
-  //   _handles.add(info);
-  // }
 
   bool _dispose = false;
   void dispose() {
@@ -125,12 +117,12 @@ class ImageRefStream {
       img?.dispose();
       return;
     } else {
-      assert(!schedule);
+      assert(!_schedule);
       _image = img;
       if (_streamError) {
         _time = DateTime.now().millisecondsSinceEpoch;
       }
-      if (!hasListener && onRemove != null) onRemove!(this);
+      _sche();
     }
   }
 
@@ -147,27 +139,28 @@ class ImageRefStream {
 
   void removeListener(PictureListener callback) {
     _list.remove(callback);
-    //                                                  如果任务未完成则不处理
+    _sche();
+  }
+
+  void _sche() {
     if (!hasListener && !_dispose && onRemove != null && _done) {
-      if (schedule) return;
+      if (_schedule) return;
 
       scheduleMicrotask(() {
-        schedule = false;
+        _schedule = false;
         if (!hasListener && !_dispose) {
           onRemove!(this);
         }
       });
-      schedule = true;
+      _schedule = true;
     }
   }
 
-  @visibleForTesting
-  bool schedule = false;
+  bool _schedule = false;
 
   bool get hasListener => _list.isNotEmpty;
 
   bool get close => _dispose;
-  // bool get active => _image?.close != false;
 
   bool _dispose = false;
 

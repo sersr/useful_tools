@@ -1,7 +1,5 @@
 import 'dart:ui' as ui;
 
-import '../../common.dart';
-
 class PictureRefInfo {
   PictureRefInfo(ui.Picture picture) : this._(PictureRef(picture));
 
@@ -32,14 +30,11 @@ class PictureRef {
 
   final ui.Picture picture;
 
-  final _handles = <PictureRefInfo>[];
+  final _handles = <PictureRefInfo>{};
 
   bool _disposed = false;
   void dispose() {
-    if (_disposed) {
-      Log.e('disposed!!!', onlyDebug: false);
-    }
-    // Log.i('disposed', onlyDebug: false);
+    assert(!_disposed);
     assert(_handles.isEmpty);
     _disposed = true;
     picture.dispose();

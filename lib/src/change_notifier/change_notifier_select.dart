@@ -1,15 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-typedef ShouldNotify<D, T> = D Function(T notify);
+typedef ShouldNotify<T, D extends ChangeNotifier> = T Function(D parent);
 
-class ChangeNotifierSelector<T, D> extends ChangeNotifier
-    implements ValueListenable<D> {
+extension ValueNotifierSelector<D extends ChangeNotifier> on D {
+  ChangeNotifierSelector<T, D> selector<T>(ShouldNotify<T, D> notifyValue) {
+    return ChangeNotifierSelector(parent: this, notifyValue: notifyValue);
+  }
+}
+
+class ChangeNotifierSelector<T, D extends ChangeNotifier> extends ChangeNotifier
+    implements ValueListenable<T> {
   ChangeNotifierSelector({required this.parent, required this.notifyValue})
-      : _value = notifyValue(parent.value);
+      : _value = notifyValue(parent);
 
-  final ValueListenable<T> parent;
-  final ShouldNotify<D, T> notifyValue;
+  final D parent;
+  final ShouldNotify<T, D> notifyValue;
 
   bool _add = false;
   @override
@@ -31,7 +37,7 @@ class ChangeNotifierSelector<T, D> extends ChangeNotifier
   }
 
   void _listener() {
-    final value = notifyValue(parent.value);
+    final value = notifyValue(parent);
 
     if (_value != value) {
       _value = value;
@@ -39,8 +45,8 @@ class ChangeNotifierSelector<T, D> extends ChangeNotifier
     }
   }
 
-  D _value;
+  T _value;
 
   @override
-  D get value => _value;
+  T get value => _value;
 }

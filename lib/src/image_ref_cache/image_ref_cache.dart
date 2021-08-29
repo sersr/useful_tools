@@ -46,7 +46,7 @@ class ImageRefCache {
 
   int printDone() {
     var count = 0;
-    final values = _imageRefs.values;
+    final values = _liveImageRefs.values;
     for (final p in values) {
       if (!p.done) count += 1;
     }
@@ -54,7 +54,7 @@ class ImageRefCache {
     return count;
   }
 
-  final _imageRefs = <ListKey, ImageRefStream>{};
+  final _liveImageRefs = <ListKey, ImageRefStream>{};
   final _imgQueue = EventQueue.run();
   final _loadQueue = EventQueue();
   final _pathQueue = EventQueue(channels: 6);
@@ -76,7 +76,6 @@ class ImageRefCache {
       final keyFirst = _imageRefCaches.keys.first;
       final cache = _imageRefCaches[keyFirst]!;
       final _cacheSizeBytes = cache.sizeBytes;
-      assert(_cacheSizeBytes != null);
       if (_cacheSizeBytes != null) {
         _sizeBytes -= _cacheSizeBytes;
         assert(_sizeBytes >= 0);
@@ -95,13 +94,17 @@ class ImageRefCache {
   }
 
   ImageRefStream? getImage(ListKey key) {
-    var listener = _imageRefs[key];
+    var listener = _liveImageRefs[key];
 
     if (listener == null) {
       listener = _imageRefCaches.remove(key);
 
       if (listener != null) {
-        _imageRefs[key] = listener;
+        final streamSizeBytes = listener.sizeBytes;
+        if (streamSizeBytes != null) {
+          _sizeBytes -= streamSizeBytes;
+        }
+        _liveImageRefs[key] = listener;
       }
     }
 
@@ -109,7 +112,7 @@ class ImageRefCache {
 
     if (listener != null) {
       if (listener.error && timeOut(listener.time)) {
-        _imageRefs.remove(key);
+        _liveImageRefs.remove(key);
         listener = null;
       }
     }
@@ -121,13 +124,12 @@ class ImageRefCache {
     Log.i('image dispose: ${map.length}', onlyDebug: false);
     final _map = List.of(map.values);
     map.clear();
-    _dis(_map);
-  }
-
-  void _dis(List<ImageRefStream> streams) {
-    for (final stream in streams) {
-      stream.dispose();
-    }
+    Timer.run(() async {
+      for (final stream in _map) {
+        stream.dispose();
+        await releaseUI;
+      }
+    });
   }
 
   ImageRefStream preCacheBuilder(
@@ -141,22 +143,26 @@ class ImageRefCache {
 
     if (_img != null) return _img;
 
-    final stream = _imageRefs[key] = ImageRefStream(onRemove: (stream) {
+    final stream = _liveImageRefs[key] = ImageRefStream(onRemove: (stream) {
       assert(!_imageRefCaches.containsKey(key));
 
-      final _stream = _imageRefs[key];
-      deal();
+      final _stream = _liveImageRefs[key];
       if (_stream == stream) {
-        _imageRefs.remove(key);
+        _liveImageRefs.remove(key);
 
-        if (_stream != null && stream.save) {
+        if (stream.save) {
           _imageRefCaches[key] = stream;
+          final streamSizeBytes = stream.sizeBytes;
+          if (streamSizeBytes != null) {
+            _sizeBytes += streamSizeBytes;
+          }
         } else {
           stream.dispose();
         }
       } else {
         stream.dispose();
       }
+      deal();
     });
 
     LoadStatus _defLoad() {
@@ -167,7 +173,7 @@ class ImageRefCache {
         /// 因为移动操作只有当前任务完成之后才有效
         assert(() {
           if (!stream.close) {
-            final _stream = _imageRefs[key];
+            final _stream = _liveImageRefs[key];
             return stream == _stream;
           }
           return true;
@@ -196,10 +202,6 @@ class ImageRefCache {
 
       await releaseUI;
       stream.setImage(imageRefInfo?.clone(), error);
-      final streamSizeBytes = stream.sizeBytes;
-      if (streamSizeBytes != null) {
-        _sizeBytes += streamSizeBytes;
-      }
       await releaseUI;
       imageRefInfo?.dispose();
     });
@@ -410,8 +412,11 @@ class ImageRefCache {
 
   void clear() {
     _clear(_imageRefCaches);
-    _clear(_imageRefs);
     _sizeBytes = 0;
+  }
+
+  void clearLiveImages() {
+    _clear(_liveImageRefs);
   }
 }
 

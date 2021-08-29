@@ -74,7 +74,7 @@ class ListViewBuilder extends StatelessWidget {
     final delegate = MyDelegate(itemBuilder,
         childCount: itemCount, finishLayout: finishLayout);
     return ColoredBox(
-      color: const Color.fromRGBO(242, 242, 242, 1),
+      color: const Color.fromRGBO(236, 236, 236, 1),
       child: RepaintBoundary(
         child: ListView.custom(
           physics:
@@ -91,7 +91,7 @@ class ListViewBuilder extends StatelessWidget {
   }
 }
 
-typedef FinishLayout = void Function(int firstIndex, int lstIndex);
+typedef FinishLayout = void Function(int firstIndex, int lastIndex);
 
 class MyDelegate extends SliverChildBuilderDelegate {
   MyDelegate(NullableIndexedWidgetBuilder builder,

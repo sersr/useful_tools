@@ -8,3 +8,4 @@ export 'text_cache.dart';
 export 'binding.dart';
 export 'widgets.dart';
 export 'extensions.dart';
+export 'src/navigation/layer.dart';

@@ -7,21 +7,10 @@ import '../../event_queue.dart';
 
 class TextCache {
   void clear() {
-    clearDispose(_textListeners);
-
     final cLength = _textRefCaches.length;
     clearDisposeRef(_textRefCaches);
     if (cLength < 30) {
-      clearDisposeRef(_textRef);
-    }
-  }
-
-  void clearDispose(Map<ListKey, TextStream> map) {
-    Log.i('text dispose: ${map.length}', onlyDebug: false);
-    final _map = List.of(map.values);
-    map.clear();
-    for (var stream in _map) {
-      stream.dispose();
+      clearDisposeRef(_liveTextRefs);
     }
   }
 
@@ -30,7 +19,7 @@ class TextCache {
     map.clear();
   }
 
-  final _textRef = <ListKey, _TextRef>{};
+  final _liveTextRefs = <ListKey, _TextRef>{};
   final _textRefCaches = <ListKey, _TextRef>{};
 
   final _textLooper = EventQueue();
@@ -43,13 +32,13 @@ class TextCache {
   }
 
   TextInfo? getTextRef(ListKey key) {
-    var textRef = _textRef[key];
+    var textRef = _liveTextRefs[key];
     if (textRef == null) {
       textRef = _textRefCaches.remove(key);
       if (textRef != null) {
         assert(Log.i('move textRef'));
         textRef.reset();
-        _textRef[key] = textRef;
+        _liveTextRefs[key] = textRef;
       }
     }
 
@@ -96,14 +85,14 @@ class TextCache {
           assert(!_map!.containsKey(key));
           final _built = builder();
 
-          final _text = _textRef[key] = _TextRef(_built, (ref) {
+          final _text = _liveTextRefs[key] = _TextRef(_built, (ref) {
             assert(!_textRefCaches.containsKey(key));
 
-            final text = _textRef[key];
+            final text = _liveTextRefs[key];
             // 有可能不是同一个对象
             if (text == ref) {
-              _textRef.remove(key);
-              if (_textRefCaches.length > 100) {
+              _liveTextRefs.remove(key);
+              if (_textRefCaches.length > 50) {
                 final keyFirst = _textRefCaches.keys.first;
                 _textRefCaches.remove(keyFirst);
               }
@@ -131,7 +120,7 @@ class TextCache {
       } finally {
         _map?.clear();
         await releaseUI;
-        stream.setTextInfo(_list.toList());
+        stream.setTextInfo(_list);
       }
     });
 
