@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:useful_tools/src/renders/slivers.dart';
 
 import 'botton.dart';
-
 
 class ListItem extends StatelessWidget {
   const ListItem({
@@ -55,6 +55,7 @@ class ListViewBuilder extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.scrollController,
     this.finishLayout,
+    this.load,
   }) : super(key: key);
 
   final int itemCount;
@@ -65,7 +66,7 @@ class ListViewBuilder extends StatelessWidget {
   final EdgeInsets padding;
   final ScrollController? scrollController;
   final FinishLayout? finishLayout;
-
+  final Widget? load;
   @override
   Widget build(BuildContext context) {
     final p = MediaQuery.of(context).padding;
@@ -73,19 +74,42 @@ class ListViewBuilder extends StatelessWidget {
         p.bottom == 0.0 ? padding : padding.copyWith(bottom: p.bottom);
     final delegate = MyDelegate(itemBuilder,
         childCount: itemCount, finishLayout: finishLayout);
+    final sliveList = itemExtent == null
+        ? SliverList(delegate: delegate)
+        : SliverFixedExtentList(delegate: delegate, itemExtent: itemExtent!);
     return ColoredBox(
       color: const Color.fromRGBO(236, 236, 236, 1),
-      child: RepaintBoundary(
-        child: ListView.custom(
-          physics:
-              const MyScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          primary: primary,
-          padding: _padding,
-          cacheExtent: cacheExtent,
-          controller: scrollController,
-          childrenDelegate: delegate,
-          itemExtent: itemExtent,
-        ),
+      child: CustomScrollView(
+        physics: const MyScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        primary: primary,
+        // padding: _padding,
+        cacheExtent: cacheExtent,
+        controller: scrollController,
+        // childrenDelegate: delegate,
+        // itemExtent: itemExtent,
+        slivers: [
+          // SliverPadding(
+          //   padding: _padding.copyWith(left: 0, right: 0, bottom: 0),
+          //   sliver: SliverPersistentHeader(
+          //       pinned: true,
+          //       floating: true,
+          //       delegate: SliverDelegate(maxExtent: 100, minExtent: 50)),
+          // ),
+          // SliverPadding(
+          //   padding: _padding.copyWith(left: 0, right: 0, bottom: 0),
+          //   sliver: SliverPersistentHeader(
+          //       pinned: true,
+          //       floating: true,
+          //       delegate: SliverDelegate(
+          //           maxExtent: 100, minExtent: 50, color: Colors.red)),
+          // ),
+          sliveList,
+          // SliverPadding(
+          //   padding: _padding.copyWith(left: 0, right: 0, top: 0),
+          //   sliver: SliverPersistentHeader(
+          //       delegate: SliverDelegate(maxExtent: 100, minExtent: 10)),
+          // )
+        ],
       ),
     );
   }

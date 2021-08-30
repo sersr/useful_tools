@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../event_queue.dart';
 import 'resampler.dart';
 
 typedef _HandleSampleTimeChangedCallback = void Function();
@@ -42,8 +45,10 @@ class _Resampler {
   void sample() {
     final scheduler = SchedulerBinding.instance;
     assert(scheduler != null);
-    final sampleTime = _llf;
-    final nextSampleTime = _lastFrameTime;
+    // final sampleTime = _llf;
+    // final nextSampleTime = _lastFrameTime;
+    final sampleTime = _lastFrameTime;
+    final nextSampleTime = _frameTime;
 
     for (final resampler in _resamplers.values) {
       resampler.resample(sampleTime, nextSampleTime, _handlePointerEvent);
@@ -65,10 +70,8 @@ class _Resampler {
         _llf = _lastFrameTime;
         _lastFrameTime = _frameTime;
         _frameTime = scheduler.currentSystemFrameTimeStamp;
-        // final resamplingMargin = _lastEventTime - _lastSampleTime;
-        // Log.i('$resamplingMargin', onlyDebug: false);
-
         _handleSampleTimeChanged();
+        // Timer.run(_handleSampleTimeChanged);
       });
     }
   }
