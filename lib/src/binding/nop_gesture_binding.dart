@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/scheduler.dart';
 
-import '../../event_queue.dart';
 import 'resampler.dart';
 
 typedef _HandleSampleTimeChangedCallback = void Function();
@@ -45,22 +42,17 @@ class _Resampler {
   void sample() {
     final scheduler = SchedulerBinding.instance;
     assert(scheduler != null);
-    // final sampleTime = _llf;
-    // final nextSampleTime = _lastFrameTime;
-    final sampleTime = _lastFrameTime;
-    final nextSampleTime = _frameTime;
+    final sampleTime = _llf;
+    final nextSampleTime = _lastFrameTime;
 
     for (final resampler in _resamplers.values) {
       resampler.resample(sampleTime, nextSampleTime, _handlePointerEvent);
     }
 
-    // Remove inactive resamplers.
     _resamplers.removeWhere((int key, Resampler resampler) {
       return !resampler.hasPendingEvents && !resampler.isDown;
     });
     final isNotEmpty = _resamplers.isNotEmpty;
-
-    // _lastSampleTime = sampleTime;
 
     if (!_frameCallbackScheduled && isNotEmpty) {
       _frameCallbackScheduled = true;
@@ -71,12 +63,10 @@ class _Resampler {
         _lastFrameTime = _frameTime;
         _frameTime = scheduler.currentSystemFrameTimeStamp;
         _handleSampleTimeChanged();
-        // Timer.run(_handleSampleTimeChanged);
       });
     }
   }
 
-  // Stop all resampling and dispatched any queued events.
   void stop() {
     for (final my in _resamplers.values) {
       my.stop(_handlePointerEvent);
@@ -128,8 +118,6 @@ mixin NopGestureBinding on GestureBinding {
 
   bool nopResamplingEnabled = true;
 
-  // Resampler used to filter incoming pointer events when resampling
-  // is enabled.
   late final _Resampler _resampler = _Resampler(
     _handleEvent,
     _handleSampleTimeChanged,

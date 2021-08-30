@@ -91,9 +91,9 @@ class Resampler {
         : _toHoverEvent(event, position, delta, timeStamp, buttons);
   }
 
+  var _position = Offset.zero;
   PointerEvent? firstEvent;
   PointerEvent? lastEvent;
-  var _position = Offset.zero;
 
   /// 相比于sdk算法区别在于：
   /// 拿到小于当前[vsyncTime]的最大指针事件
@@ -118,7 +118,7 @@ class Resampler {
         break;
       }
     }
-    Log.w('big:$i, ${list.length}', onlyDebug: false);
+    // Log.w('big:$count, ${list.length}', onlyDebug: false);
     lastEvent = _last;
     firstEvent = _first ?? _last;
   }
@@ -132,43 +132,24 @@ class Resampler {
       HandleEventCallback callback) {
     _processPointerEvents(vsyncTime);
 
-    final sampleTime = vsyncTime - const Duration(milliseconds: 5);
     final _last = lastEvent;
     final _first = firstEvent;
 
     if (_last == null || _first == null) return;
+
+    final sampleTime = vsyncTime - const Duration(milliseconds: 5);
     final _lastTimeStamp = _last.timeStamp;
-    var endTime = _lastTimeStamp;
-
-    final it = _queuedEvents.iterator;
-
-    while (it.moveNext()) {
-      final event = it.current;
-      if (event.timeStamp > _lastTimeStamp) {
-        if (event.timeStamp >= nextTimeStamp) {
-          break;
-        }
-        if (event is PointerUpEvent || event is PointerRemovedEvent) {
-          endTime = event.timeStamp;
-          continue;
-        }
-
-        if (event is! PointerMoveEvent && event is! PointerHoverEvent) {
-          break;
-        }
-      }
-    }
+    var endTime = sampleTime;
 
     var position = _positionAt(sampleTime);
 
     while (_queuedEvents.isNotEmpty) {
       final event = _queuedEvents.first;
-      if (event is! PointerUpEvent && event is! PointerRemovedEvent) {
-        if (event.timeStamp == _lastTimeStamp) {
+      if (event == _queuedEvents.last) {
+        if (event.timeStamp > _lastTimeStamp) {
           break;
         }
-      }
-      if (event.timeStamp > endTime) {
+      } else if (event.timeStamp > endTime) {
         break;
       }
 
