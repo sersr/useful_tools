@@ -87,8 +87,11 @@ class EventQueue {
     final future = _task.future;
     if (key != null) {
       final keyList = _keyEvents.putIfAbsent(key, () => <_TaskEntry>[]);
-      if (keyList.isNotEmpty) {
-        _task._setIgnore(keyList.first.ignore);
+      if (keyList.isEmpty) {
+        _task.taskIgnore = _TaskIgnore(true);
+      } else {
+        assert(keyList.first.taskIgnore != null);
+        _task.taskIgnore = keyList.first.taskIgnore;
       }
       keyList.add(_task);
       future.whenComplete(() {
@@ -139,7 +142,13 @@ class EventQueue {
       _addEventTask(callback, onlyLastOne: true, taskKey: taskKey);
 
   void run() async {
-    _runner ??= _run()..whenComplete(() => _runner = null);
+    _runner ??= _run()
+      ..whenComplete(() {
+        _runner = null;
+
+        /// `微任务异步`完成，存在任务池不为空的可能
+        if (_taskPool.isNotEmpty) run();
+      });
   }
 
   /// 自动选择要调用的函数
@@ -160,6 +169,7 @@ class EventQueue {
   /// 与[channels]关系密切
   final tasks = FutureAny();
   final _keyEvents = <Object, List<_TaskEntry>>{};
+
   Future<void> _limited(_TaskEntry task) async {
     tasks.add(eventRun(task));
 
@@ -183,7 +193,35 @@ class EventQueue {
     }
   }
 
-  @protected
+  /// 依赖于事件循环机制
+  ///
+  /// 每次循环都要进入一次事件循环等待，确保在循环中不会占用资源，flutter会自动判断要运行的任务
+  /// 类别
+  ///
+  /// `flutter engine`中有一个`消息循环`遍历消息队列，UI相关的任务有较高的优先级，会先执行，
+  /// dart 的消息循环在`flutter engine`中被定义为`microTask`，意为不是主要任务，
+  /// 由`Dart_HandleMessage`实现，处理一次dart中的消息，完成之后会再次向`engine`的消息队列
+  /// 注册一个新的任务实体，如此循环往复
+  /// dart中的微任务定义为`observer`，微任务不是单独的任务实体，依附于当前运行的任务实体，而其
+  /// 在dart中的实现是一个链表，并且是实时链接的，是在每次任务实体完成之后调用的，还是占用当前
+  /// 任务实体的时间
+  ///
+  /// 异步(Future)相关：
+  /// 类别：消息异步，微任务异步，同步
+  /// 只有明确调用了[Timer]才是消息异步，才不会一直占用UI时间，把耗时的同步代码块转换为异步，
+  /// 并在中间添加消息异步，如`await Future((){});`，这是一个没有延迟的消息异步，也就是说之
+  /// 后的任务会在下次消息循环被调用，虽然完成时间比较久，但在每一帧中的耗时减少了，不会造成卡顿，
+  /// 这样解决了不得不在主隔离中调用耗时函数的问题
+  ///
+  /// 微任务异步在任务实体完成之后调用并完成
+  ///
+  /// 同步：同步的[Future]对象，有时`异步`是[Future]，但是却不想`异步`，就可以同步的[Future]
+  /// 冒充
+  ///
+  /// 可以自己实现[Future]，它只是一个类，所有的异步概念在`future_impl.dart`中实现，`异步完成`
+  /// 是微任务实现的，所以在使用`await`时判断是否占用UI时间(vsync开始了，还未执行任务)，看异步
+  /// 中是否包含消息异步代码就可以了，否则与同步无异，且本次任务实体未完成(UI 任务一直在队列中)；
+  /// `ReceivePort`是通过dart的消息循环实现的，是消息异步，几乎所有的`通信`都是消息异步
   Future<void> _run() async {
     while (_taskPool.isNotEmpty) {
       await releaseUI;
@@ -201,27 +239,22 @@ class EventQueue {
           assert(_keyEvents.containsKey(taskKey));
           final taskList = _keyEvents[taskKey]!;
 
-          // _taskPool.isNotEmpty
           final last = _taskPool.last;
 
+          final first = taskList.first;
+          assert(first.taskIgnore != null);
           if (last.taskKey == task.taskKey) {
-            if (taskList.first.ignore) {
-              for (var t in taskList) {
-                t._setIgnore(false);
-              }
-            }
+            first.ignore = false;
             assert(!taskList.any((t) => t.ignore), '可能哪个地方错误了？');
           } else {
-            if (!taskList.first.ignore) {
-              for (var t in taskList) {
-                t._setIgnore(true);
-              }
-            }
+            first.ignore = true;
             assert(!taskList.any((t) => !t.ignore), '可能哪个地方错误了？');
           }
-          await releaseUI;
         }
-        if (!task.ignore) {
+        /// 每次进入此处，会自动设置ignore，对于 onlyLastOne 没有关系，
+        /// 相同的 key 共享同一对象，取得任一元素就可以完成操作，相对以往版本，减少for循环
+        /// 带来的时间消耗(O(n))
+        if (task.notIgnore) {
           await _runImpl(task);
           continue;
         }
@@ -257,15 +290,16 @@ class _TaskEntry<T> {
   /// [onlyLastOne] == true 并且不是任务队列的最后一个任务，才会被抛弃
   /// 不管 [onlyLastOne] 为任何值，最后一个任务都会执行
   final bool onlyLastOne;
-  late bool _ignore = onlyLastOne;
 
-  bool get ignore => _ignore;
+  bool get ignore => taskIgnore?.ignore == true;
+  bool get notIgnore => taskIgnore?.ignore == false;
 
-  void _setIgnore(bool v) {
-    if (onlyLastOne) {
-      _ignore = v;
-    }
+  set ignore(bool v) {
+    taskIgnore?.ignore = v;
   }
+
+  // 共享一个对象
+  _TaskIgnore? taskIgnore;
 
   final _completer = Completer<T>();
 
@@ -314,9 +348,11 @@ class _TaskEntry<T> {
     assert(EventQueue.currentTask != null);
 
     _innerCompleted();
-    scheduleMicrotask(() {
+    Timer.run(() {
       if (_completed) return;
-      _eventQueue._taskPool.add(this);
+      _eventQueue
+        .._taskPool.add(this)
+        ..run();
     });
   }
 
@@ -351,6 +387,12 @@ enum _ChannelState {
 
   /// 单任务
   one,
+}
+
+class _TaskIgnore {
+  _TaskIgnore(this.ignore);
+
+  bool ignore;
 }
 
 /// 进入 事件循环，

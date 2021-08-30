@@ -3,24 +3,7 @@ import 'package:flutter/rendering.dart';
 
 import '../../common.dart';
 
-class BottomLoadingRender extends RenderSliverFloatingPinnedPersistentHeader {
-  @override
-  void performLayout() {}
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    super.paint(context, offset);
-  }
-
-  @override
-  // TODO: implement maxExtent
-  double get maxExtent => throw UnimplementedError();
-
-  @override
-  // TODO: implement minExtent
-  double get minExtent => throw UnimplementedError();
-}
-
+/// TODO: 向外暴露[Animation]
 class SliverDelegate extends SliverPersistentHeaderDelegate {
   SliverDelegate(
       {this.minExtent = 0,

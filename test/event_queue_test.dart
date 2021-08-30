@@ -1,10 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:useful_tools/common.dart';
 import 'package:useful_tools/event_queue.dart';
 import 'package:useful_tools/src/common/test_zone.dart';
 
+/// 针对[EventQueue]的单元测试
 void main() async {
   test('event tasks 01', () async {
     final events = EventQueue();
@@ -69,9 +68,6 @@ void main() async {
       expect(await third, null);
       expect(await fourth, true);
 
-      /// 上面的语句未涉及到消息循环
-      /// 普通的[Future]只在完成时有可能调用`scheduleMicrotask`,[Future]factory函数指明
-      /// 了异步类型，只有消息异步(一般是使用了[Timer])才是真正的释放cpu占用，以待将来再次调用
       await events.runner;
       (() => Log.i('hello')).push(events);
     });

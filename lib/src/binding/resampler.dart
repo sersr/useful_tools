@@ -3,8 +3,6 @@ import 'dart:collection';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-import '../../common.dart';
-
 class Resampler {
   final Queue<PointerEvent> _queuedEvents = Queue<PointerEvent>();
   void addEvent(PointerEvent event) {
@@ -95,10 +93,7 @@ class Resampler {
   PointerEvent? firstEvent;
   PointerEvent? lastEvent;
 
-  /// 相比于sdk算法区别在于：
   /// 拿到小于当前[vsyncTime]的最大指针事件
-  /// 而原始算法是从头开始，只要满足小于采样时间就确定第一个事件，
-  /// 但是这个指针事件的时间可能远远小于采样时间，通过插值返回的值不那么精确
   void _processPointerEvents(Duration vsyncTime) {
     final list = _queuedEvents.toList();
     PointerEvent? _last;
@@ -118,7 +113,7 @@ class Resampler {
         break;
       }
     }
-    // Log.w('big:$count, ${list.length}', onlyDebug: false);
+
     lastEvent = _last;
     firstEvent = _first ?? _last;
   }
@@ -150,6 +145,7 @@ class Resampler {
           break;
         }
       } else if (event.timeStamp > endTime) {
+        // 保留最后一个指针事件
         break;
       }
 

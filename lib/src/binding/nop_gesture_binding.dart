@@ -29,8 +29,6 @@ class _Resampler {
     assert(scheduler != null);
 
     if (event.kind == PointerDeviceKind.touch) {
-      // _lastEventTime = event.timeStamp;
-
       final _my = _resamplers.putIfAbsent(event.device, () => Resampler());
 
       _my.addEvent(event);
@@ -116,6 +114,7 @@ mixin NopGestureBinding on GestureBinding {
     super.handlePointerEvent(event);
   }
 
+  /// 不使用[samplingOffset]
   bool nopResamplingEnabled = true;
 
   late final _Resampler _resampler = _Resampler(
