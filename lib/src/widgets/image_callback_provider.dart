@@ -45,14 +45,12 @@ class CallbackWithKeyImage extends ImageProvider<CallbackWithKeyImage> {
     );
   }
 
-  static final _imageCallQueue = EventQueue.createEventQueue(
-      '_image_provider_callback_queue',
-      channels: 4);
+  static final _imageCallQueue = EventQueue(channels: 4);
 
   Future<ui.Codec> _loadAsync(
       CallbackWithKeyImage key, DecoderCallback decode) async {
     assert(key == this);
-    final bytes = await _imageCallQueue.addEventTask(callback);
+    final bytes = await _imageCallQueue.awaitEventTask(callback);
 
     if (bytes == null) {
       assert(Log.w('图片加载失败'));

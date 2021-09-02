@@ -99,8 +99,10 @@ class Resampler {
     PointerEvent? _last;
     PointerEvent? _first;
     var i = list.length - 1;
+    // var count = -1;
     for (; i >= 0; i--) {
       final event = list[i];
+      // count = i;
       if (event.timeStamp <= vsyncTime) {
         _last = event;
         final _fi = i - 1;
@@ -113,7 +115,7 @@ class Resampler {
         break;
       }
     }
-
+    // Log.i('${count + 1} | ${list.length}', onlyDebug: false, showPath: false);
     lastEvent = _last;
     firstEvent = _first ?? _last;
   }
@@ -202,8 +204,9 @@ class Resampler {
     final touchSampleTimeDiff = sampleTime - _last.timeStamp;
 
     final diff = touchTimeDiff.inMicroseconds.toDouble();
-    final alpha =
-        diff == 0 ? 0.0 : touchSampleTimeDiff.inMicroseconds.toDouble() / diff;
+    if (diff == 0) return _p;
+
+    final alpha = touchSampleTimeDiff.inMicroseconds.toDouble() / diff;
 
     final positonDiff = _last.position - _first.position;
     x += positonDiff.dx * alpha;

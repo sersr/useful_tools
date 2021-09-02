@@ -37,19 +37,10 @@ class _Resampler {
     }
   }
 
+  /// 每一个指针传入都会调用此方法，‘启动’与‘实现’分离
+  /// 启动
   void sample() {
     final scheduler = SchedulerBinding.instance;
-    assert(scheduler != null);
-    final sampleTime = _llf;
-    final nextSampleTime = _lastFrameTime;
-
-    for (final resampler in _resamplers.values) {
-      resampler.resample(sampleTime, nextSampleTime, _handlePointerEvent);
-    }
-
-    _resamplers.removeWhere((int key, Resampler resampler) {
-      return !resampler.hasPendingEvents && !resampler.isDown;
-    });
     final isNotEmpty = _resamplers.isNotEmpty;
 
     if (!_frameCallbackScheduled && isNotEmpty) {
@@ -63,6 +54,21 @@ class _Resampler {
         _handleSampleTimeChanged();
       });
     }
+  }
+
+  /// 实现
+  void _sample() {
+    final sampleTime = _llf;
+    final nextSampleTime = _lastFrameTime;
+
+    for (final resampler in _resamplers.values) {
+      resampler.resample(sampleTime, nextSampleTime, _handlePointerEvent);
+    }
+
+    _resamplers.removeWhere((int key, Resampler resampler) {
+      return !resampler.hasPendingEvents && !resampler.isDown;
+    });
+    sample();
   }
 
   void stop() {
@@ -103,7 +109,7 @@ mixin NopGestureBinding on GestureBinding {
   void _handleSampleTimeChanged() {
     if (!locked) {
       if (nopResamplingEnabled) {
-        _resampler.sample();
+        _resampler._sample();
       } else {
         _resampler.stop();
       }

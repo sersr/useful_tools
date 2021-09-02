@@ -55,9 +55,9 @@ class ImageRefCache {
   }
 
   final _liveImageRefs = <ListKey, ImageRefStream>{};
-  final _imgQueue = EventQueue.run();
+  final _imgQueue = EventQueue();
   final _loadQueue = EventQueue();
-  final _pathQueue = EventQueue(channels: 6);
+  final _pathQueue = EventQueue.run();
 
   static const _defaultSizeBytes = 80 << 20;
 
@@ -132,12 +132,7 @@ class ImageRefCache {
     });
   }
 
-  ImageRefStream preCacheBuilder(
-    List keys, {
-    required Future<void> Function(LoadStatus Function(),
-            Future<void> Function(ui.Image? image, bool error) setImage)
-        callback,
-  }) {
+  ImageRefStream preCacheBuilder(List keys, {required _PreBuilder callback}) {
     final key = ListKey(keys);
     final _img = getImage(key);
 
@@ -171,27 +166,17 @@ class ImageRefCache {
 
         /// 如果资源没被释放，那么 [_pictures] 中必定包含[stream]对象
         /// 因为移动操作只有当前任务完成之后才有效
-        assert(() {
-          if (!stream.close) {
-            final _stream = _liveImageRefs[key];
-            return stream == _stream;
-          }
-          return true;
-        }());
+        assert(stream.close || _liveImageRefs[key] == stream);
 
         return LoadStatus.inactive;
       }
 
-      if (stream.defLoad) {
-        return LoadStatus.defLoad;
-      }
-
-      return LoadStatus.active;
+      return stream.defLoad ? LoadStatus.defLoad : LoadStatus.active;
     }
 
     var _done = false;
     callback(_defLoad, (ui.Image? image, bool error) async {
-      if (_done) Log.i('done : setImage', onlyDebug: false);
+      if (_done) Log.e('done : setImage', onlyDebug: false);
       _done = true;
 
       ImageRefInfo? imageRefInfo;
@@ -199,63 +184,22 @@ class ImageRefCache {
       if (image != null) {
         imageRefInfo = ImageRefInfo.imageRef(image);
       }
-
-      await releaseUI;
       stream.setImage(imageRefInfo?.clone(), error);
-      await releaseUI;
       imageRefInfo?.dispose();
     });
 
     return stream;
   }
 
-  @Deprecated('use preCacheUrl instead.')
-  ImageRefStream preCache(File f,
-      {required double cacheWidth,
-      required double cacheHeight,
-      BoxFit fit = BoxFit.fitHeight}) {
-    return preCacheBuilder([f.path, cacheWidth, cacheHeight, fit],
-        callback: (defLoad, setImage) async {
-      final w = ui.window;
-
-      Future<void> _getData() async {
-        ui.Image? image;
-        var error = false;
-
-        try {
-          await releaseUI;
-
-          final bytes = await f.readAsBytes();
-          await releaseUI;
-
-          if (fit == BoxFit.fitHeight) {
-            image = await _decode(bytes,
-                cacheHeight: (cacheHeight * w.devicePixelRatio).toInt());
-          } else {
-            image = await _decode(bytes,
-                cacheWidth: (cacheWidth * w.devicePixelRatio).toInt());
-          }
-          await releaseUI;
-        } catch (e) {
-          Log.e('e: $e');
-          error = true;
-        } finally {
-          await setImage(image?.clone(), error);
-          image?.dispose();
-        }
-      }
-
-      _imgQueue.addEventTask(
-          () => _def(defLoad, _getData, () => setImage(null, false)));
-    });
-  }
-
   Future<T?> _def<T>(LoadStatus Function() defLoad,
       FutureOr<T> Function() callback, VoidCallback dispose,
       {Future<void> Function()? wait}) async {
     assert(EventQueue.currentTask != null);
-    wait ??= () => releaseUI;
-    await wait();
+    if (wait != null) {
+      await wait();
+    } else {
+      await releaseUI;
+    }
     final _load = defLoad();
     switch (_load) {
       case LoadStatus.defLoad:
@@ -286,22 +230,28 @@ class ImageRefCache {
         setImage(null, false);
       }
 
-      final path = await _pathQueue.addEventTask(() => _def(deferred, () async {
-            final _path = await getPath(url);
-            // 手动处理失败的情况
-            if (_path == null) {
-              Log.w('_path == null', onlyDebug: false);
-              _done = true;
-              setImage(null, true);
-            }
-            return _path;
-          }, _sDone, wait: () => EventQueue.scheduler.endOfFrame));
+      final path =
+          await _pathQueue.awaitEventTask(() => _def(deferred, () async {
+                final _path = await getPath(url);
+                // 手动处理失败的情况
+                if (_path == null) {
+                  Log.w('_path == null', onlyDebug: false);
+                  _done = true;
+                  setImage(null, true);
+                }
+                return _path;
+              }, _sDone, wait: () => EventQueue.scheduler.endOfFrame));
       if (path == null) {
         assert(_done);
         return;
       }
 
       final f = File(path);
+      if (!await f.exists()) {
+        _sDone();
+        return;
+      }
+
       Future<void> _imageTask() async {
         ui.Image? image;
         var error = false;
@@ -331,14 +281,7 @@ class ImageRefCache {
         }
       }
 
-      // 手动处理失败的情况
-      if (await f.exists()) {
-        await _imgQueue.addEventTask(() => _def(deferred, _imageTask, _sDone,
-            wait: () => EventQueue.scheduler.endOfFrame));
-      } else {
-        Log.w('file no exists.', onlyDebug: false);
-        _sDone();
-      }
+      await _imgQueue.awaitEventTask(() => _def(deferred, _imageTask, _sDone));
       assert(_done);
     });
   }
@@ -361,7 +304,7 @@ class ImageRefCache {
       }
 
       final bytes =
-          await _pathQueue.addEventTask(() => _def(deferred, () async {
+          await _pathQueue.awaitEventTask(() => _def(deferred, () async {
                 final bytes = await getPath();
                 // 手动处理失败的情况
                 if (bytes == null) {
@@ -369,7 +312,7 @@ class ImageRefCache {
                   setImage(null, true);
                 }
                 return bytes;
-              }, _sDone));
+              }, _sDone, wait: () => EventQueue.scheduler.endOfFrame));
 
       if (bytes == null) {
         assert(_done);
@@ -405,8 +348,7 @@ class ImageRefCache {
         }
       }
 
-      await _imgQueue.addEventTask(() => _def(deferred, _imageTask, _sDone,
-          wait: () => EventQueue.scheduler.endOfFrame));
+      await _imgQueue.awaitEventTask(() => _def(deferred, _imageTask, _sDone));
     });
   }
 
@@ -420,6 +362,8 @@ class ImageRefCache {
   }
 }
 
+typedef SetImage = Future<void> Function(ui.Image? image, bool error);
+typedef _PreBuilder = Future<void> Function(LoadStatus Function(), SetImage);
 typedef PathFuture = FutureOr<String?> Function(String url);
 typedef Unit8ListFuture = FutureOr<Uint8List?> Function();
 enum LoadStatus {

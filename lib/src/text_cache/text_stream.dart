@@ -92,7 +92,7 @@ class TextCache {
             // 有可能不是同一个对象
             if (text == ref) {
               _liveTextRefs.remove(key);
-              if (_textRefCaches.length > 50) {
+              if (_textRefCaches.length > 150) {
                 final keyFirst = _textRefCaches.keys.first;
                 _textRefCaches.remove(keyFirst);
               }
@@ -116,7 +116,7 @@ class TextCache {
       try {
         await callback(putIfAbsentTextRef);
       } catch (s, e) {
-        Log.e('...error:$s\n $e');
+       assert(Log.e('...error:$s\n $e'));
       } finally {
         _map?.clear();
         await releaseUI;

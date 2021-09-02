@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:useful_tools/src/renders/slivers.dart';
 
+import '../../common.dart';
 import 'botton.dart';
 
 class ListItem extends StatelessWidget {
@@ -88,6 +89,18 @@ class ListViewBuilder extends StatelessWidget {
         // childrenDelegate: delegate,
         // itemExtent: itemExtent,
         slivers: [
+          LoadingWidget(
+            deleagete: SliverBuilderDeleagete(
+              builder: (double offset, BoxConstraints constraints) {
+                Log.i('offset: $offset', onlyDebug: false);
+                return Container(
+                    height: 50,
+                    color: Colors.blue,
+                    child: Center(child: Text('offset: $offset')));
+              },
+            ),
+          ),
+
           // SliverPadding(
           //   padding: _padding.copyWith(left: 0, right: 0, bottom: 0),
           //   sliver: SliverPersistentHeader(

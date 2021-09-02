@@ -28,7 +28,7 @@ class EventQueue {
   EventQueue({this.channels = 1});
 
   ///所有任务即时运行，[channels] 无限制
-  EventQueue.run({this.channels = -1});
+  EventQueue.run() : channels = -1;
   final int channels;
 
   _ChannelState _getState() {
@@ -51,19 +51,30 @@ class EventQueue {
     if (_t is _TaskEntry) return _t;
   }
 
-  static final _queues = HashMap<ListKey, EventQueue>();
-  static final iOQueue = createEventQueue('ioQueue');
+  static final iOQueue = EventQueue();
 
-  static EventQueue createEventQueue(key, {int channels = 1}) {
+  static final _tempQueues = <Object, EventQueue>{};
+
+  static Future<T> runTaskOnQueue<T>(key, EventCallback<T> task) {
     List list;
     if (key is Iterable) {
-      list = [...key, channels];
+      list = key.toList();
     } else {
-      list = [key, channels];
+      list = [key];
     }
     final listKey = ListKey(list);
 
-    return _queues.putIfAbsent(listKey, () => EventQueue(channels: channels));
+    final _queue = _tempQueues.putIfAbsent(listKey, () => EventQueue());
+    return _queue.awaitEventTask(task)
+      ..whenComplete(() {
+        if (_queue._taskPool.isEmpty) {
+          _tempQueues.remove(listKey);
+        }
+      });
+  }
+
+  static int checkTempQueueLength() {
+    return _tempQueues.length;
   }
 
   static SchedulerBinding get scheduler => SchedulerBinding.instance!;
@@ -74,6 +85,17 @@ class EventQueue {
 
   Future<void>? _runner;
   Future<void>? get runner => _runner;
+
+  void run() async {
+    _runner ??= _run()
+      ..whenComplete(() {
+        _runner = null;
+
+        /// `完成`是微任务异步，存在任务池不为空的可能
+        if (_taskPool.isNotEmpty) run();
+      });
+  }
+
   Future<T> _addEventTask<T>(EventCallback<T> callback,
       {bool onlyLastOne = false, Object? taskKey}) {
     final _task = _TaskEntry<T>(
@@ -83,6 +105,7 @@ class EventQueue {
       onlyLastOne: onlyLastOne,
     );
     _taskPool.add(_task);
+
     final key = _task.taskKey;
     final future = _task.future;
     if (key != null) {
@@ -105,57 +128,50 @@ class EventQueue {
     return future;
   }
 
-  /// 永远不要在单通道中(channels == 1)等待另一个任务
-  /// 同样不要在任务中调用`await runner`
-  ///
-  /// ```dart
-  /// final events = EventQueue();
-  /// Future<void> _load() async {
-  ///  // error: 任务永远不会完成
-  ///  await events.addEventTask((){});
-  ///  await events.runner;
-  ///
-  ///  // good
-  ///  events.addEventTask((){});
-  ///
-  /// }
-  ///
-  /// events.addEventTask(_load);
-  ///
-  /// events.addEventTask(() async {
-  ///   await ...
-  ///   // 如果删除`await`，不会出错
-  ///   _load();
-  /// });
-  /// ```
-  Future<T> addEventTask<T>(EventCallback<T> callback, {Object? taskKey}) =>
+  void addEventTask<T>(EventCallback<T> callback, {Object? taskKey}) =>
       _addEventTask(callback, taskKey: taskKey);
 
   /// 如果该任务在队列中，并且不是最后一个，那么将被抛弃。
-  /// 如果即将要运行的任务与队列中最后一个任务拥有相同的[taskKey]，那么也不会被抛弃，并且会即时
-  /// 更改队列中同类型任务的状态，注意如果再次有任务插入并且[taskKey]与之不同，状态也会再次改变
+  ///
+  /// 例外:
+  /// 如果即将要运行的任务与队列中最后一个任务拥有相同的[taskKey]，也不会被抛弃，并且会更改
+  /// 状态，如果两个key相等(==)会共享一个状态([_TaskIgnore])，由共享状态决定是否被抛弃,
+  /// 每次任务调用开始时，会自动检查与最后一个任务是否拥有相同的[taskKey]，并更新状态。
   ///
   /// 无法抛弃正在运行中的任务。
   ///
   /// 返回的值可能为 null
-  Future<T?> addOneEventTask<T>(EventCallback<T> callback, {Object? taskKey}) =>
+  void addOneEventTask<T>(EventCallback<T> callback, {Object? taskKey}) =>
       _addEventTask(callback, onlyLastOne: true, taskKey: taskKey);
 
-  void run() async {
-    _runner ??= _run()
-      ..whenComplete(() {
-        _runner = null;
+  Future<T> awaitEventTask<T>(EventCallback<T> callback, {Object? taskKey}) {
+    checkError();
+    return _addEventTask(callback, taskKey: taskKey);
+  }
 
-        /// `微任务异步`完成，存在任务池不为空的可能
-        if (_taskPool.isNotEmpty) run();
-      });
+  Future<T?> awaitOneEventTask<T>(EventCallback<T> callback,
+      {Object? taskKey}) {
+    checkError();
+    return _addEventTask(callback, onlyLastOne: true, taskKey: taskKey);
+  }
+
+  void checkError() {
+    assert(() {
+      if (_state == _ChannelState.one &&
+          EventQueue.currentTask?._eventQueue == this) {
+        throw AwaitEventException(
+          '在单通道(channels == 1)且在另一个任务(同一个队列)中，不应该使用`await`,'
+          '可以考虑使用`addEventTask`或`addOneEventTask`',
+        );
+      }
+      return true;
+    }());
   }
 
   /// 自动选择要调用的函数
   late final EventRunCallback _runImpl = _getRunCallback();
-
+  late final _ChannelState _state = _getState();
   EventRunCallback _getRunCallback() {
-    final _state = _getState();
     switch (_state) {
       case _ChannelState.limited:
         return _limited;
@@ -251,6 +267,7 @@ class EventQueue {
             assert(!taskList.any((t) => !t.ignore), '可能哪个地方错误了？');
           }
         }
+
         /// 每次进入此处，会自动设置ignore，对于 onlyLastOne 没有关系，
         /// 相同的 key 共享同一对象，取得任一元素就可以完成操作，相对以往版本，减少for循环
         /// 带来的时间消耗(O(n))
@@ -404,21 +421,28 @@ Future<void> release(Duration time) => Future.delayed(time);
 void _empty() {}
 
 extension EventsPush<T> on FutureOr<T> Function() {
-  Future<T> pushWith({Object? eventKey, Object? taskKey}) {
-    return EventQueue.createEventQueue(eventKey)
-        .addEventTask(this, taskKey: taskKey);
-  }
-
-  Future<T?> pushOneWith({Object? eventKey, Object? taskKey}) {
-    return EventQueue.createEventQueue(eventKey)
-        .addOneEventTask(this, taskKey: taskKey);
-  }
-
-  Future<T> push(EventQueue events, {Object? taskKey}) {
+  void push(EventQueue events, {Object? taskKey}) {
     return events.addEventTask(this, taskKey: taskKey);
   }
 
-  Future<T?> pushOne(EventQueue events, {Object? taskKey}) {
+  void pushOne(EventQueue events, {Object? taskKey}) {
     return events.addOneEventTask(this, taskKey: taskKey);
+  }
+
+  Future<T> pushAwait(EventQueue events, {Object? taskKey}) {
+    return events.awaitEventTask(this, taskKey: taskKey);
+  }
+
+  Future<T?> pushOneAwait(EventQueue events, {Object? taskKey}) {
+    return events.awaitOneEventTask(this, taskKey: taskKey);
+  }
+}
+
+class AwaitEventException implements Exception {
+  AwaitEventException(this.message);
+  final String message;
+  @override
+  String toString() {
+    return '${objectRuntimeType(this, 'AwaitEventException')}:  $message';
   }
 }
