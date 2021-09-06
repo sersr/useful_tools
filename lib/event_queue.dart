@@ -55,22 +55,36 @@ class EventQueue {
 
   static final _tempQueues = <Object, EventQueue>{};
 
-  static Future<T> runTaskOnQueue<T>(key, EventCallback<T> task) {
+  /// 确保拥有相同的[key]在同一个队列中
+  static Future<T> runTaskOnQueue<T>(key, EventCallback<T> task,
+      {int channels = 1}) {
     List list;
     if (key is Iterable) {
-      list = key.toList();
+      list = [...key, channels];
     } else {
-      list = [key];
+      list = [key, channels];
     }
     final listKey = ListKey(list);
 
-    final _queue = _tempQueues.putIfAbsent(listKey, () => EventQueue());
+    final _queue =
+        _tempQueues.putIfAbsent(listKey, () => EventQueue(channels: channels));
     return _queue.awaitEventTask(task)
       ..whenComplete(() {
         if (_queue._taskPool.isEmpty) {
           _tempQueues.remove(listKey);
         }
       });
+  }
+
+  static Future<void>? getQueueRunner(key, {int channels = 1}) {
+    List list;
+    if (key is Iterable) {
+      list = [...key, channels];
+    } else {
+      list = [key, channels];
+    }
+    final listKey = ListKey(list);
+    return _tempQueues[listKey]?.runner;
   }
 
   static int checkTempQueueLength() {
