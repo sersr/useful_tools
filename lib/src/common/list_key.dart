@@ -1,17 +1,8 @@
-import 'package:collection/collection.dart';
-import 'dart:ui';
+import 'package:equatable/equatable.dart';
 
-class ListKey {
-  ListKey(this.list);
-  final List list;
+class ListKey extends Equatable {
+  ListKey(Object key) : props = [key];
 
   @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        other is ListKey &&
-            const DeepCollectionEquality().equals(list, other.list);
-  }
-
-  @override
-  int get hashCode => hashList(list);
+  final List<Object?> props;
 }

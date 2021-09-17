@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
 
 import 'common.dart';
 import 'src/common/future_any.dart';
@@ -41,30 +40,19 @@ class EventQueue {
     }
   }
 
-  // 运行任务
-  Future<void> eventRun(_TaskEntry task) {
-    return runZoned(task._run, zoneValues: {#zoneTask: task});
-  }
-
   static _TaskEntry? get currentTask {
     final _t = Zone.current[#zoneTask];
     if (_t is _TaskEntry) return _t;
   }
 
-  static final iOQueue = EventQueue();
-
   static final _tempQueues = <Object, EventQueue>{};
 
-  /// 确保拥有相同的[key]在同一个队列中
+  /// 拥有相同的[key]在会一个队列中
+  ///
+  /// 如果所有任务都已完成，移除[EventQueue]对象
   static Future<T> runTaskOnQueue<T>(key, EventCallback<T> task,
       {int channels = 1}) {
-    List list;
-    if (key is Iterable) {
-      list = [...key, channels];
-    } else {
-      list = [key, channels];
-    }
-    final listKey = ListKey(list);
+    final listKey = ListKey([key, channels]);
 
     final _queue =
         _tempQueues.putIfAbsent(listKey, () => EventQueue(channels: channels));
@@ -77,21 +65,14 @@ class EventQueue {
   }
 
   static Future<void>? getQueueRunner(key, {int channels = 1}) {
-    List list;
-    if (key is Iterable) {
-      list = [...key, channels];
-    } else {
-      list = [key, channels];
-    }
-    final listKey = ListKey(list);
+    final listKey = ListKey([key, channels]);
+
     return _tempQueues[listKey]?.runner;
   }
 
   static int checkTempQueueLength() {
     return _tempQueues.length;
   }
-
-  static SchedulerBinding get scheduler => SchedulerBinding.instance!;
 
   final _taskPool = ListQueue<_TaskEntry>();
 
@@ -125,10 +106,10 @@ class EventQueue {
     if (key != null) {
       final keyList = _keyEvents.putIfAbsent(key, () => <_TaskEntry>[]);
       if (keyList.isEmpty) {
-        _task.taskIgnore = _TaskIgnore(true);
+        _task._taskIgnore = _TaskIgnore(true);
       } else {
-        assert(keyList.first.taskIgnore != null);
-        _task.taskIgnore = keyList.first.taskIgnore;
+        assert(keyList.first._taskIgnore != null);
+        _task._taskIgnore = keyList.first._taskIgnore;
       }
       keyList.add(_task);
       future.whenComplete(() {
@@ -159,17 +140,18 @@ class EventQueue {
       _addEventTask(callback, onlyLastOne: true, taskKey: taskKey);
 
   Future<T> awaitEventTask<T>(EventCallback<T> callback, {Object? taskKey}) {
-    checkError();
+    _checkError();
     return _addEventTask(callback, taskKey: taskKey);
   }
 
   Future<T?> awaitOneEventTask<T>(EventCallback<T> callback,
       {Object? taskKey}) {
-    checkError();
+    _checkError();
     return _addEventTask(callback, onlyLastOne: true, taskKey: taskKey);
   }
 
-  void checkError() {
+  @pragma('vm:prefer-inline')
+  void _checkError() {
     assert(() {
       if (_state == _ChannelState.one &&
           EventQueue.currentTask?._eventQueue == this) {
@@ -197,27 +179,35 @@ class EventQueue {
   }
 
   /// 与[channels]关系密切
-  final tasks = FutureAny();
+  final _tasks = FutureAny();
   final _keyEvents = <Object, List<_TaskEntry>>{};
 
+  // 运行任务
+  @pragma('vm:prefer-inline')
+  Future<void> eventRun(_TaskEntry task) {
+    return runZoned(task._run, zoneValues: {#zoneTask: task});
+  }
+
+  @pragma('vm:prefer-inline')
   Future<void> _limited(_TaskEntry task) async {
-    tasks.add(eventRun(task));
+    _tasks.add(eventRun(task));
 
     // 达到 channels 数              ||  最后一个
-    while (tasks.length >= channels || _taskPool.isEmpty) {
-      if (tasks.isEmpty) break;
-      await tasks.any;
+    while (_tasks.length >= channels || _taskPool.isEmpty) {
+      if (_tasks.isEmpty) break;
+      await _tasks.any;
       await releaseUI;
     }
   }
 
+  @pragma('vm:prefer-inline')
   Future<void> _runAll(_TaskEntry task) async {
-    tasks.add(eventRun(task));
+    _tasks.add(eventRun(task));
 
     if (_taskPool.isEmpty) {
-      while (tasks.isNotEmpty) {
+      while (_tasks.isNotEmpty) {
         if (_taskPool.isNotEmpty) break;
-        await tasks.any;
+        await _tasks.any;
         await releaseUI;
       }
     }
@@ -272,30 +262,22 @@ class EventQueue {
           final last = _taskPool.last;
 
           final first = taskList.first;
-          assert(first.taskIgnore != null);
-          if (last.taskKey == task.taskKey) {
-            first.ignore = false;
-            assert(!taskList.any((t) => t.ignore), '可能哪个地方错误了？');
-          } else {
-            first.ignore = true;
-            assert(!taskList.any((t) => !t.ignore), '可能哪个地方错误了？');
-          }
+          assert(first._taskIgnore != null);
+          final ignore = last.taskKey != task.taskKey;
+          first._ignore(ignore);
         }
 
-        /// 每次进入此处，会自动设置ignore，对于 onlyLastOne 没有关系，
-        /// 相同的 key 共享同一对象，取得任一元素就可以完成操作，相对以往版本，减少for循环
-        /// 带来的时间消耗(O(n))
         if (task.notIgnore) {
           await _runImpl(task);
           continue;
         }
 
         /// 任务被抛弃
-        task.completed();
+        task._complete();
       }
     }
 
-    assert(tasks.isEmpty);
+    assert(_tasks.isEmpty);
   }
 }
 
@@ -304,8 +286,11 @@ class _TaskEntry<T> {
     required this.callback,
     required EventQueue queue,
     this.taskKey,
+    this.isOvserve = false,
     this.onlyLastOne = false,
   }) : _eventQueue = queue;
+
+  final bool isOvserve;
 
   /// 此任务所在的事件队列
   final EventQueue _eventQueue;
@@ -316,61 +301,53 @@ class _TaskEntry<T> {
   /// 可通过[EventQueue.currentTask]访问、修改；
   /// 作为数据、状态等
   dynamic value;
+
   final Object? taskKey;
 
   /// [onlyLastOne] == true 并且不是任务队列的最后一个任务，才会被抛弃
   /// 不管 [onlyLastOne] 为任何值，最后一个任务都会执行
   final bool onlyLastOne;
 
-  bool get ignore => taskIgnore?.ignore == true;
-  bool get notIgnore => taskIgnore?.ignore == false;
+  //TODO: 需要子任务吗?
+  List<_TaskEntry>? _ovserves;
 
-  set ignore(bool v) {
-    taskIgnore?.ignore = v;
+  void add(_TaskEntry ovserve) {
+    _ovserves ??= <_TaskEntry>[];
+    _ovserves!.add(ovserve);
+  }
+
+  bool get ignore => _taskIgnore?.ignore == true;
+  bool get notIgnore => _taskIgnore?.ignore == false;
+
+  void _ignore(bool v) {
+    _taskIgnore?.ignore = v;
   }
 
   // 共享一个对象
-  _TaskIgnore? taskIgnore;
+  _TaskIgnore? _taskIgnore;
 
-  final _completer = Completer<T>();
+  final _outCompleter = Completer<T>();
 
-  Future<T> get future => _completer.future;
+  Future<T> get future => _outCompleter.future;
 
   // 队列循环要等待的对象
   Completer<void>? _innerCompleter;
 
-  void _innerCompleted() {
-    if (_innerCompleter != null) {
-      assert(!_innerCompleter!.isCompleted);
-      _innerCompleter!.complete();
-      _innerCompleter = null;
-    }
-  }
-
-  void _innerComplete(T result) {
-    if (_innerCompleter != null) {
-      _innerCompleted();
-      completed(result);
-    }
-  }
-
-  void _innerCompleteError(Object error) {
-    if (_innerCompleter != null) {
-      _innerCompleted();
-      completedError(error);
-    }
-  }
-
+  @pragma('vm:prefer-inline')
   Future<void> _run() async {
-    final result = callback();
-    if (result is Future<T>) {
-      assert(_innerCompleter == null);
-      _innerCompleter ??= Completer<void>();
-      result.then(_innerComplete, onError: _innerCompleteError);
-      return _innerCompleter!.future;
+    try {
+      final result = callback();
+      if (result is Future<T>) {
+        assert(_innerCompleter == null);
+        _innerCompleter ??= Completer<void>();
+        result.then(_completeAll, onError: _completeErrorAll);
+        return _innerCompleter!.future;
+      }
+      // 同步
+      _complete(result);
+    } catch (e) {
+      _completedError(e);
     }
-    // 同步
-    completed(result);
   }
 
   /// 从 [EventQueue.currentTask] 访问
@@ -378,7 +355,7 @@ class _TaskEntry<T> {
     assert(!_completed);
     assert(EventQueue.currentTask != null);
 
-    _innerCompleted();
+    _innerComplete();
     Timer.run(() {
       if (_completed) return;
       _eventQueue
@@ -393,19 +370,41 @@ class _TaskEntry<T> {
   ///
   /// 1. [T] 为 void 类型
   /// 2. [onlyLastOne] == true 且被抛弃忽略
-  void completed([T? result]) {
+  void _complete([T? result]) {
     if (_completed) return;
 
     _completed = true;
     // 应该让等待的代码块在下一次事件循环中执行
-    Timer.run(() => _completer.complete(result));
+    Timer.run(() => _outCompleter.complete(result));
   }
 
-  void completedError(Object error) {
+  void _completedError(Object error) {
     if (_completed) return;
 
     _completed = true;
-    _completer.completeError(error);
+    _outCompleter.completeError(error);
+  }
+
+  void _innerComplete() {
+    if (_innerCompleter != null) {
+      assert(!_innerCompleter!.isCompleted);
+      _innerCompleter!.complete();
+      _innerCompleter = null;
+    }
+  }
+
+  void _completeAll(T result) {
+    if (_innerCompleter != null) {
+      _innerComplete();
+      _complete(result);
+    }
+  }
+
+  void _completeErrorAll(Object error) {
+    if (_innerCompleter != null) {
+      _innerComplete();
+      _completedError(error);
+    }
   }
 }
 

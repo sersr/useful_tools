@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../../common.dart';
 import '../../event_queue.dart';
@@ -18,6 +19,8 @@ class ImageRefCache {
 
     return frameInfo.image;
   }
+
+  SchedulerBinding get scheduler => SchedulerBinding.instance!;
 
   Future<ui.Codec> imageCodec(
     Uint8List list, {
@@ -50,28 +53,27 @@ class ImageRefCache {
     for (final p in values) {
       if (!p.done) count += 1;
     }
-    // Log.i('steram !done: $count', onlyDebug: false);
     return count;
   }
 
   final _liveImageRefs = <ListKey, ImageRefStream>{};
-  final _imgQueue = EventQueue();
+  final _imgQueue = EventQueue(channels: 4);
   final _loadQueue = EventQueue();
   final _pathQueue = EventQueue.run();
 
-  static const _defaultSizeBytes = 80 << 20;
+  static const _defaultSizeBytes = 40 << 20;
 
   var _maxSizeBytes = _defaultSizeBytes;
   set maxSizeBytes(int max) {
     assert(max > 0);
     _maxSizeBytes = max;
-    deal();
+    _autoClear();
   }
 
   var _sizeBytes = 0;
 
-  void deal() {
-    while (_sizeBytes > _maxSizeBytes || _imageRefCaches.length > 650) {
+  void _autoClear() {
+    while (_sizeBytes > _maxSizeBytes || _imageRefCaches.length > 320) {
       if (_imageRefCaches.isEmpty) return;
       final keyFirst = _imageRefCaches.keys.first;
       final cache = _imageRefCaches[keyFirst]!;
@@ -120,18 +122,6 @@ class ImageRefCache {
     return listener;
   }
 
-  void _clear(Map<ListKey, ImageRefStream> map) {
-    Log.i('image dispose: ${map.length}', onlyDebug: false);
-    final _map = List.of(map.values);
-    map.clear();
-    Timer.run(() async {
-      for (final stream in _map) {
-        stream.dispose();
-        await releaseUI;
-      }
-    });
-  }
-
   ImageRefStream preCacheBuilder(List keys, {required _PreBuilder callback}) {
     final key = ListKey(keys);
     final _img = getImage(key);
@@ -157,7 +147,7 @@ class ImageRefCache {
       } else {
         stream.dispose();
       }
-      deal();
+      _autoClear();
     });
 
     LoadStatus _defLoad() {
@@ -236,11 +226,10 @@ class ImageRefCache {
                 // 手动处理失败的情况
                 if (_path == null) {
                   Log.w('_path == null', onlyDebug: false);
-                  _done = true;
                   setImage(null, true);
                 }
                 return _path;
-              }, _sDone, wait: () => EventQueue.scheduler.endOfFrame));
+              }, _sDone, wait: () => scheduler.endOfFrame));
       if (path == null) {
         assert(_done);
         return;
@@ -275,7 +264,7 @@ class ImageRefCache {
           final local = image?.clone();
           image?.dispose();
           _loadQueue.addEventTask(() async {
-            await EventQueue.scheduler.endOfFrame;
+            await scheduler.endOfFrame;
             await setImage(local, error);
           });
         }
@@ -312,7 +301,7 @@ class ImageRefCache {
                   setImage(null, true);
                 }
                 return bytes;
-              }, _sDone, wait: () => EventQueue.scheduler.endOfFrame));
+              }, _sDone, wait: () => scheduler.endOfFrame));
 
       if (bytes == null) {
         assert(_done);
@@ -342,7 +331,7 @@ class ImageRefCache {
           final local = image?.clone();
           image?.dispose();
           _loadQueue.addEventTask(() async {
-            await EventQueue.scheduler.endOfFrame;
+            await scheduler.endOfFrame;
             await setImage(local, error);
           });
         }
@@ -359,6 +348,17 @@ class ImageRefCache {
 
   void clearLiveImages() {
     _clear(_liveImageRefs);
+  }
+
+  void _clear(Map<ListKey, ImageRefStream> map) {
+    final _map = List.of(map.values);
+    map.clear();
+    Timer.run(() async {
+      for (final stream in _map) {
+        stream.dispose();
+        await releaseUI;
+      }
+    });
   }
 }
 

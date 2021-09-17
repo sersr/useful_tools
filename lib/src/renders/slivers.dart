@@ -1,203 +1,142 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:math' as math;
+
 import '../../common.dart';
 
-class SliverDelegate extends SliverPersistentHeaderDelegate {
-  SliverDelegate(
-      {this.minExtent = 0,
-      required this.maxExtent,
-      this.color = Colors.blue,
-      this.overflow = false});
-
-  @override
-  final double minExtent;
-  @override
-  final double maxExtent;
-  final Color color;
-  final bool overflow;
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    Log.i('shrinkOffset:$shrinkOffset #$color');
-    final height = maxExtent - shrinkOffset;
-    if (overflow) {
-      return Container(
-          height: height, child: const Text('hello'), color: color);
-    }
-    return Container(
-        height: height.clamp(minExtent, maxExtent),
-        child: const Text('hello'),
-        color: color);
-  }
-
-  @override
-  bool shouldRebuild(covariant SliverDelegate oldDelegate) {
-    return oldDelegate.minExtent != minExtent ||
-        oldDelegate.maxExtent != maxExtent;
-  }
-}
-
-class LoadingWidget extends RenderObjectWidget {
-  const LoadingWidget({Key? key, required this.deleagete}) : super(key: key);
-  final SliverBuilderDeleagete deleagete;
-
-  @override
-  RenderObjectElement createElement() {
-    return LoadingElement(this);
-  }
-
-  @override
-  RenderObject createRenderObject(BuildContext context) {
-    return LoadingSliver();
-  }
-}
-
-class LoadingElement extends RenderObjectElement {
-  LoadingElement(LoadingWidget widget) : super(widget);
-  @override
-  LoadingWidget get widget => super.widget as LoadingWidget;
-  @override
-  LoadingSliver get renderObject => super.renderObject as LoadingSliver;
-
-  @override
-  void mount(Element? parent, Object? newSlot) {
-    super.mount(parent, newSlot);
-    renderObject._element = this;
-  }
-
-  @override
-  void unmount() {
-    renderObject._element = null;
-    super.unmount();
-  }
-
-  Element? _child;
-  void layoutChild(double offset, BoxConstraints constraints) {
-    owner!.buildScope(this, () {
-      _child = updateChild(
-          _child, widget.deleagete.build(offset, constraints), null);
-    });
-  }
-
-  @override
-  void insertRenderObjectChild(
-      covariant RenderBox child, covariant Object? slot) {
-    renderObject.updateChild(child);
-  }
-
-  @override
-  void removeRenderObjectChild(
-      covariant RenderBox child, covariant Object? slot) {
-    renderObject.removeChild(child);
-  }
-}
-
 typedef WidgetBuilder = Widget Function(
-    double offset, BoxConstraints constraints);
+    AnimationController animationController);
 
-class LoadingSliver extends RenderSliver with RenderSliverHelpers {
-  LoadingElement? _element;
-  RenderBox? _child;
-  void updateChild(RenderBox child) {
-    if (_child != null) {
-      dropChild(_child!);
-    }
-    _child = child;
-    adoptChild(child);
+class ListViewLoadingFooter extends StatefulWidget {
+  const ListViewLoadingFooter(
+      {Key? key, required this.extent, required this.builder})
+      : super(key: key);
+  final double extent;
+  final WidgetBuilder builder;
+  @override
+  _ListViewLoadingFooterState createState() => _ListViewLoadingFooterState();
+}
+
+class _ListViewLoadingFooterState extends State<ListViewLoadingFooter>
+    with TickerProviderStateMixin {
+  ScrollPosition? _position;
+  late AnimationController animationController;
+  @override
+  void initState() {
+    super.initState();
+    animationController = AnimationController(vsync: this);
   }
 
-  void removeChild(RenderBox child) {
-    // assert(_child == child);
-    adoptChild(child);
+  @override
+  void didUpdateWidget(covariant ListViewLoadingFooter oldWidget) {
+    super.didUpdateWidget(oldWidget);
     _child = null;
   }
 
   @override
-  void visitChildren(RenderObjectVisitor visitor) {
-    if (_child != null) visitor(_child!);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_position != null) {
+      _position!.removeListener(_onUpdatePosition);
+    }
+    _position = Scrollable.of(context)?.position;
+    if (_position != null) {
+      _position!.addListener(_onUpdatePosition);
+    }
+  }
+
+  void _onUpdatePosition() {
+    assert(_position != null);
+    final pixels = _position!.pixels;
+    final extent = widget.extent;
+    // if (pixels > extent) {
+    //   return;
+    // }
+    final v = ((extent - pixels) / extent).clamp(0.0, 1.0);
+    Log.i('pixels: $pixels | $v', onlyDebug: false);
+    animationController.value = v;
+  }
+
+  Widget? _child;
+  @override
+  Widget build(BuildContext context) {
+    return _child ??= widget.builder(animationController);
+  }
+}
+
+class Footer extends SingleChildRenderObjectWidget {
+  const Footer({Key? key, required Widget child, required this.no})
+      : super(key: key, child: child);
+  final ValueNotifier<double> no;
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return RenderSliverToBoxAdapter(no: no);
   }
 
   @override
+  void updateRenderObject(
+      BuildContext context, covariant RenderSliverToBoxAdapter renderObject) {
+    renderObject.no = no;
+  }
+}
+
+class RenderSliverToBoxAdapter extends RenderSliverSingleBoxAdapter {
+  /// Creates a [RenderSliver] that wraps a [RenderBox].
+  RenderSliverToBoxAdapter({RenderBox? child, required this.no})
+      : super(child: child);
+  ValueNotifier<double> no;
+
+  @override
   void performLayout() {
-    final c = constraints;
-    final maxExtent = c.remainingPaintExtent;
-    late double height;
-    late double width;
-    if (c.axis == Axis.vertical) {
-      height = maxExtent;
-      width = c.crossAxisExtent;
-    } else {
-      height = c.crossAxisExtent;
-      width = maxExtent;
-    }
-
-    final box = BoxConstraints(maxHeight: height, maxWidth: width);
-    invokeLayoutCallback<SliverConstraints>((SliverConstraints constraints) {
-      _element!.layoutChild(c.scrollOffset, box);
-    });
-
-    if (_child != null) {
-      _child!.layout(box, parentUsesSize: true);
-      final size = _child!.size;
-      late double extent;
-      if (c.axis == Axis.vertical) {
-        extent = size.height;
-      } else {
-        extent = size.width;
-      }
-      extent = math.min(extent, maxExtent);
-      final double sc = (extent - c.scrollOffset).clamp(0, extent);
-      geometry = SliverGeometry(
-        scrollExtent: extent,
-        paintExtent: sc,
-        maxPaintExtent: extent,
-        layoutExtent: sc,
-      );
+    if (child == null) {
+      geometry = SliverGeometry.zero;
       return;
     }
-    geometry = SliverGeometry.zero;
+    final SliverConstraints constraints = this.constraints;
+    child!.layout(constraints.asBoxConstraints(), parentUsesSize: true);
+    final double childExtent;
+    switch (constraints.axis) {
+      case Axis.horizontal:
+        childExtent = child!.size.width;
+        break;
+      case Axis.vertical:
+        childExtent = child!.size.height;
+        break;
+    }
+    var _extent = childExtent;
+    if (no.value == 0.0) {
+      _extent = 0.0;
+    }
+    final double paintedChildSize =
+        calculatePaintOffset(constraints, from: 0.0, to: _extent);
+    final double cacheExtent =
+        calculateCacheOffset(constraints, from: 0.0, to: _extent);
+
+    assert(paintedChildSize.isFinite);
+    assert(paintedChildSize >= 0.0);
+
+    // if (paintedChildSize == 0 &&
+    //     constraints.scrollOffset > 0 &&
+    //     geometry != null) {
+    //   geometry = const SliverGeometry(scrollOffsetCorrection: -100);
+    //   return;
+    // }
+    geometry = SliverGeometry(
+      scrollExtent: childExtent,
+      paintExtent: paintedChildSize,
+      cacheExtent: cacheExtent,
+      maxPaintExtent: childExtent,
+      hitTestExtent: paintedChildSize,
+      hasVisualOverflow: childExtent > constraints.remainingPaintExtent ||
+          constraints.scrollOffset > 0.0,
+    );
+
+    setChildParentData(child!, constraints, geometry!);
   }
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (_child != null && geometry?.visible == true) {
-      context.paintChild(
-          _child!,
-          offset +
-              Offset(0.0, -geometry!.maxPaintExtent + geometry!.paintExtent));
-    }
-  }
-
-  @override
-  bool hitTestChildren(SliverHitTestResult result,
-      {required double mainAxisPosition, required double crossAxisPosition}) {
-    return _child != null &&
-        hitTestBoxChild(BoxHitTestResult.wrap(result), _child!,
-            mainAxisPosition: mainAxisPosition,
-            crossAxisPosition: crossAxisPosition);
-  }
-
-  @override
-  void applyPaintTransform(RenderObject child, Matrix4 transform) {
-    applyPaintTransformForBoxChild(child as RenderBox, transform);
-  }
-
-  @override
-  double childMainAxisPosition(covariant RenderObject child) {
-    return 0.0;
-  }
-}
-
-class SliverBuilderDeleagete {
-  SliverBuilderDeleagete(
-      {required this.builder, this.wapRepaintBundary = true});
-  final bool wapRepaintBundary;
-  final WidgetBuilder builder;
-
-  Widget? build(double offset, BoxConstraints constraints) {
-    Widget child = builder(offset, constraints);
-    if (wapRepaintBundary) child = RepaintBoundary(child: child);
-    return child;
+    if (no.value == 0.0) return;
+    super.paint(context, offset);
   }
 }

@@ -32,7 +32,7 @@ class ListItem extends StatelessWidget {
       constraints: height == null
           ? null
           : BoxConstraints(maxHeight: height!, minHeight: height!),
-      padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 10.0),
       child: btn1(
           onTap: onTap,
           background: background,
@@ -45,7 +45,7 @@ class ListItem extends StatelessWidget {
   }
 }
 
-class ListViewBuilder extends StatelessWidget {
+class ListViewBuilder extends StatefulWidget {
   const ListViewBuilder({
     Key? key,
     required this.itemCount,
@@ -68,62 +68,103 @@ class ListViewBuilder extends StatelessWidget {
   final ScrollController? scrollController;
   final FinishLayout? finishLayout;
   final Widget? load;
+
+  @override
+  State<ListViewBuilder> createState() => _ListViewBuilderState();
+}
+
+///TODO: 未完成
+class _ListViewBuilderState extends State<ListViewBuilder> {
+  final ValueNotifier<double> no = ValueNotifier(0.0);
+  final ValueNotifier<bool> canShow = ValueNotifier(false);
   @override
   Widget build(BuildContext context) {
     final p = MediaQuery.of(context).padding;
-    final _padding =
-        p.bottom == 0.0 ? padding : padding.copyWith(bottom: p.bottom);
-    final delegate = MyDelegate(itemBuilder,
-        childCount: itemCount, finishLayout: finishLayout);
-    final sliveList = itemExtent == null
+    final _padding = p.bottom == 0.0
+        ? widget.padding
+        : widget.padding.copyWith(bottom: p.bottom);
+    final delegate = MyDelegate(widget.itemBuilder,
+        childCount: widget.itemCount, finishLayout: widget.finishLayout);
+    final sliveList = widget.itemExtent == null
         ? SliverList(delegate: delegate)
-        : SliverFixedExtentList(delegate: delegate, itemExtent: itemExtent!);
+        : SliverFixedExtentList(
+            delegate: delegate, itemExtent: widget.itemExtent!);
     return ColoredBox(
       color: const Color.fromRGBO(236, 236, 236, 1),
-      child: CustomScrollView(
-        physics: const MyScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        primary: primary,
-        // padding: _padding,
-        cacheExtent: cacheExtent,
-        controller: scrollController,
-        // childrenDelegate: delegate,
-        // itemExtent: itemExtent,
-        slivers: [
-          LoadingWidget(
-            deleagete: SliverBuilderDeleagete(
-              builder: (double offset, BoxConstraints constraints) {
-                Log.i('offset: $offset', onlyDebug: false);
-                return Container(
-                    height: 50,
-                    color: Colors.blue,
-                    child: Center(child: Text('offset: $offset')));
-              },
-            ),
-          ),
-
-          // SliverPadding(
-          //   padding: _padding.copyWith(left: 0, right: 0, bottom: 0),
-          //   sliver: SliverPersistentHeader(
-          //       pinned: true,
-          //       floating: true,
-          //       delegate: SliverDelegate(maxExtent: 100, minExtent: 50)),
-          // ),
-          // SliverPadding(
-          //   padding: _padding.copyWith(left: 0, right: 0, bottom: 0),
-          //   sliver: SliverPersistentHeader(
-          //       pinned: true,
-          //       floating: true,
-          //       delegate: SliverDelegate(
-          //           maxExtent: 100, minExtent: 50, color: Colors.red)),
-          // ),
-          sliveList,
-          // SliverPadding(
-          //   padding: _padding.copyWith(left: 0, right: 0, top: 0),
-          //   sliver: SliverPersistentHeader(
-          //       delegate: SliverDelegate(maxExtent: 100, minExtent: 10)),
-          // )
-        ],
-      ),
+      child: NotificationListener(
+          onNotification: (Notification n) {
+            Log.w(n.runtimeType);
+            if (n is OverscrollIndicatorNotification && n.leading) {
+              n.disallowIndicator();
+            }
+            if (n is ScrollStartNotification) {
+              canShow.value = n.metrics.extentBefore == 0.0;
+            }
+            if (n is ScrollUpdateNotification) {
+              if (no.value == 0.0) canShow.value = false;
+            }
+            if (n is OverscrollNotification) {
+              if (canShow.value) {
+                if (n.dragDetails != null) {
+                  no.value = (no.value - n.overscroll).clamp(0.0, 100.0);
+                }
+              }
+            }
+            if (n is ScrollEndNotification) {
+              if (n.metrics.pixels - no.value >= 0) {
+                Scrollable.of(n.context!)!.position.correctBy(-no.value);
+                no.value = 0.0;
+              }
+            }
+            return false;
+          },
+          child: CustomScrollView(
+            physics:
+                const MyScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            primary: widget.primary,
+            cacheExtent: widget.cacheExtent,
+            controller: widget.scrollController,
+            slivers: [
+              Footer(
+                no: no,
+                child: RepaintBoundary(
+                  child: AnimatedBuilder(
+                      animation: no,
+                      builder: (context, _) {
+                        if (no.value <= 0) {
+                          return const SizedBox();
+                        }
+                        return Container(
+                          height: no.value,
+                          width: 400,
+                          color: Colors.blue,
+                          child: Center(child: Text('hello ${no.value}')),
+                        );
+                      }),
+                ),
+              ),
+              // SliverPadding(
+              //   padding: _padding.copyWith(left: 0, right: 0, bottom: 0),
+              //   sliver: SliverPersistentHeader(
+              //       pinned: true,
+              //       floating: true,
+              //       delegate: SliverDelegate(maxExtent: 100, minExtent: 50)),
+              // ),
+              // SliverPadding(
+              //   padding: _padding.copyWith(left: 0, right: 0, bottom: 0),
+              //   sliver: SliverPersistentHeader(
+              //       pinned: true,
+              //       floating: true,
+              //       delegate: SliverDelegate(
+              //           maxExtent: 100, minExtent: 50, color: Colors.red)),
+              // ),
+              // sliveList,
+              SliverPadding(
+                padding: _padding,
+                sliver: sliveList,
+              )
+            ],
+          )),
     );
   }
 }
