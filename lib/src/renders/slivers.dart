@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'dart:math' as math;
 
 import '../../common.dart';
 
@@ -65,26 +64,18 @@ class _ListViewLoadingFooterState extends State<ListViewLoadingFooter>
 }
 
 class Footer extends SingleChildRenderObjectWidget {
-  const Footer({Key? key, required Widget child, required this.no})
+  const Footer({Key? key, required Widget child})
       : super(key: key, child: child);
-  final ValueNotifier<double> no;
-  @override
-  RenderObject createRenderObject(BuildContext context) {
-    return RenderSliverToBoxAdapter(no: no);
-  }
 
   @override
-  void updateRenderObject(
-      BuildContext context, covariant RenderSliverToBoxAdapter renderObject) {
-    renderObject.no = no;
+  RenderObject createRenderObject(BuildContext context) {
+    return RenderSliverToBoxAdapter();
   }
 }
 
 class RenderSliverToBoxAdapter extends RenderSliverSingleBoxAdapter {
   /// Creates a [RenderSliver] that wraps a [RenderBox].
-  RenderSliverToBoxAdapter({RenderBox? child, required this.no})
-      : super(child: child);
-  ValueNotifier<double> no;
+  RenderSliverToBoxAdapter({RenderBox? child}) : super(child: child);
 
   @override
   void performLayout() {
@@ -104,9 +95,9 @@ class RenderSliverToBoxAdapter extends RenderSliverSingleBoxAdapter {
         break;
     }
     var _extent = childExtent;
-    if (no.value == 0.0) {
-      _extent = 0.0;
-    }
+    // if (no.value == 0.0) {
+    //   _extent = 0.0;
+    // }
     final double paintedChildSize =
         calculatePaintOffset(constraints, from: 0.0, to: _extent);
     final double cacheExtent =
@@ -136,7 +127,7 @@ class RenderSliverToBoxAdapter extends RenderSliverSingleBoxAdapter {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (no.value == 0.0) return;
+    // if (no.value == 0.0) return;
     super.paint(context, offset);
   }
 }
