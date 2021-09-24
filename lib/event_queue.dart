@@ -32,9 +32,9 @@ class EventQueue {
 
   _ChannelState _getState() {
     if (channels < 1) {
-      return _ChannelState.limited;
-    } else if (channels > 1) {
       return _ChannelState.run;
+    } else if (channels > 1) {
+      return _ChannelState.limited;
     } else {
       return _ChannelState.one;
     }
@@ -47,21 +47,34 @@ class EventQueue {
 
   static final _tempQueues = <Object, EventQueue>{};
 
-  /// 拥有相同的[key]在会一个队列中
-  ///
-  /// 如果所有任务都已完成，移除[EventQueue]对象
-  static Future<T> runTaskOnQueue<T>(key, EventCallback<T> task,
+  static Future<T> _runTaskOnQueue<T>(
+      key, Future<T> Function(EventQueue event) run,
       {int channels = 1}) {
     final listKey = ListKey([key, channels]);
 
     final _queue =
         _tempQueues.putIfAbsent(listKey, () => EventQueue(channels: channels));
-    return _queue.awaitEventTask(task)
+    return run(_queue)
       ..whenComplete(() {
         if (_queue._taskPool.isEmpty) {
           _tempQueues.remove(listKey);
         }
       });
+  }
+
+  /// 拥有相同的[key]在会一个队列中
+  ///
+  /// 如果所有任务都已完成，移除[EventQueue]对象
+  static Future<T> runTaskOnQueue<T>(key, EventCallback<T> task,
+      {int channels = 1}) {
+    return _runTaskOnQueue(key, (event) => event.awaitEventTask(task),
+        channels: channels);
+  }
+
+  static Future<T?> runOneTaskOnQueue<T>(key, EventCallback<T> task,
+      {int channels = 1}) {
+    return _runTaskOnQueue(key, (event) => event.awaitOneEventTask(task),
+        channels: channels);
   }
 
   static Future<void>? getQueueRunner(key, {int channels = 1}) {
@@ -81,7 +94,7 @@ class EventQueue {
   Future<void>? _runner;
   Future<void>? get runner => _runner;
 
-  void run() async {
+  void run() {
     _runner ??= _run()
       ..whenComplete(() {
         _runner = null;

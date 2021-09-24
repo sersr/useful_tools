@@ -270,7 +270,8 @@ class RefreshDelegate {
       _refresh!
         .._setValue(maxExtent)
         .._setMode(RefreshMode.refreshing);
-      Scrollable.of(_context!)!.position.correctPixels(0.0);
+        Scrollable.of(_context!)!.position.jumpTo(0.0);
+      // Scrollable.of(_context!)!.position.correctPixels(0.0);
     }
   }
 
@@ -464,7 +465,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
   }
 
   void _update() {
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -488,22 +489,23 @@ class _RefreshWidgetState extends State<RefreshWidget>
 
   @override
   Widget build(BuildContext context) {
+    final position = Scrollable.of(context)!.position;
     return AnimatedBuilder(
         animation: refresh,
         builder: (context, _) {
           assert(refresh.refreshDelegate != null);
           final builder = refresh.refreshDelegate!.builder;
 
-          if (refresh.value <= 0) {
-            return const SizedBox();
-          }
-
-          return builder(
-              context,
-              refresh._value,
-              refresh.maxExtent,
-              refresh.mode,
-              EventQueue.getQueueRunner(_RefreshWidgetState) != null);
+          return SizedBox(
+            height: position.axis == Axis.vertical ? refresh.value : 0.0,
+            width: position.axis == Axis.vertical ? 0.0 : refresh.value,
+            child: builder(
+                context,
+                refresh.maxExtent - refresh._value,
+                refresh.maxExtent,
+                refresh.mode,
+                EventQueue.getQueueRunner(_RefreshWidgetState) != null),
+          );
         });
   }
 }
