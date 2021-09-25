@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../common.dart';
-import '../../event_queue.dart';
 import 'botton.dart';
 
 class ListItem extends StatelessWidget {

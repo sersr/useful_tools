@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import '../../common.dart';
+import 'package:utils/utils.dart';
+
 
 class ImageRefInfo {
   ImageRefInfo.imageRef(ui.Image rawImage) : this._(_ImageRef._(rawImage));

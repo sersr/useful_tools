@@ -5,9 +5,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:utils/utils.dart';
 
-import '../../common.dart';
-import '../../event_queue.dart';
 import 'image_ref_info.dart';
 
 class ImageRefCache {

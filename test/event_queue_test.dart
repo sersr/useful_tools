@@ -1,7 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:useful_tools/common.dart';
-import 'package:useful_tools/event_queue.dart';
-import 'package:useful_tools/src/common/test_zone.dart';
 
 /// 针对[EventQueue]的单元测试
 void main() async {

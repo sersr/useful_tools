@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
-import 'log.dart';
+
+import '../../common.dart';
 
 class PictureRefInfo {
   PictureRefInfo(ui.Picture picture) : this._(_PictureRef(picture));
@@ -7,6 +8,7 @@ class PictureRefInfo {
   PictureRefInfo._(this._pictureRef) {
     _pictureRef._handles.add(this);
   }
+
   /// 需要观察 [_pictureRef] 是否正确释放时设置为 true
   static var observe = false;
   final _PictureRef _pictureRef;
