@@ -13,9 +13,8 @@ class ListItem extends StatelessWidget {
     this.onTap,
     this.background = true,
     this.height,
-    this.color = const Color.fromRGBO(242, 242, 242, 1),
-    this.bgColor = const Color.fromRGBO(250, 250, 250, 1),
-    this.splashColor = const Color.fromRGBO(225, 225, 225, 1),
+    this.bgColor,
+    this.splashColor,
   }) : super(key: key);
 
   final Widget child;
@@ -23,9 +22,8 @@ class ListItem extends StatelessWidget {
   final VoidCallback? onLongPress;
   final bool background;
   final double? height;
-  final Color color;
-  final Color bgColor;
-  final Color splashColor;
+  final Color? bgColor;
+  final Color? splashColor;
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +37,8 @@ class ListItem extends StatelessWidget {
           background: background,
           onLongPress: onLongPress,
           radius: 6.0,
-          bgColor: bgColor,
-          splashColor: splashColor,
+          bgColor: bgColor ?? const Color.fromRGBO(250, 250, 250, 1),
+          splashColor: splashColor ?? const Color.fromRGBO(225, 225, 225, 1),
           child: child),
     );
   }
@@ -58,7 +56,7 @@ class ListViewBuilder extends StatefulWidget {
     this.scrollController,
     this.finishLayout,
     this.refreshDelegate,
-    this.color = const Color.fromRGBO(236, 236, 236, 1),
+    this.color,
   }) : super(key: key);
 
   final int? itemCount;
@@ -69,7 +67,7 @@ class ListViewBuilder extends StatefulWidget {
   final EdgeInsets padding;
   final ScrollController? scrollController;
   final FinishLayout? finishLayout;
-  final Color color;
+  final Color? color;
   final RefreshDelegate? refreshDelegate;
   @override
   State<ListViewBuilder> createState() => _ListViewBuilderState();
@@ -111,7 +109,7 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
             delegate: delegate, itemExtent: widget.itemExtent!);
 
     return ColoredBox(
-      color: widget.color,
+      color: widget.color ?? const Color.fromRGBO(236, 236, 236, 1),
       child: NotificationListener(
           onNotification: _onNotification,
           child: CustomScrollView(
@@ -269,7 +267,7 @@ class RefreshDelegate {
       _refresh!
         .._setValue(maxExtent)
         .._setMode(RefreshMode.refreshing);
-        Scrollable.of(_context!)!.position.jumpTo(0.0);
+      Scrollable.of(_context!)!.position.jumpTo(0.0);
       // Scrollable.of(_context!)!.position.correctPixels(0.0);
     }
   }
