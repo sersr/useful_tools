@@ -137,17 +137,41 @@ class Resampler {
     final sampleTime = vsyncTime - const Duration(milliseconds: 5);
     final _lastTimeStamp = _last.timeStamp;
     var endTime = sampleTime;
+    final Iterator<PointerEvent> it = _queuedEvents.iterator;
+    while (it.moveNext()) {
+      final PointerEvent event = it.current;
 
+      // Potentially stop dispatching events if more recent than `sampleTime`.
+      if (event.timeStamp > sampleTime) {
+        // Definitely stop if more recent than `nextSampleTime`.
+        if (event.timeStamp >= nextTimeStamp) {
+          break;
+        }
+
+        // Update `endTime` to allow early processing of up and removed
+        // events as this improves resampling of these events, which is
+        // important for fling animations.
+        if (event is PointerUpEvent || event is PointerRemovedEvent) {
+          endTime = event.timeStamp;
+          continue;
+        }
+
+        // Stop if event is not move or hover.
+        if (event is! PointerMoveEvent && event is! PointerHoverEvent) {
+          break;
+        }
+      }
+    }
     var position = _positionAt(sampleTime);
-
+    final _e = sampleTime == endTime;
     while (_queuedEvents.isNotEmpty) {
       final event = _queuedEvents.first;
-      if (event == _queuedEvents.last) {
+      if (_e && event == _queuedEvents.last) {
+        // 保留最后一个指针事件
         if (event.timeStamp > _lastTimeStamp) {
           break;
         }
       } else if (event.timeStamp > endTime) {
-        // 保留最后一个指针事件
         break;
       }
 

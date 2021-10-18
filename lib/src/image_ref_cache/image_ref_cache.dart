@@ -69,10 +69,17 @@ class ImageRefCache {
     _autoClear();
   }
 
+  var _length = 320;
+  set length(int size) {
+    assert(size > 0);
+    _length = size;
+    _autoClear();
+  }
+
   var _sizeBytes = 0;
 
   void _autoClear() {
-    while (_sizeBytes > _maxSizeBytes || _imageRefCaches.length > 320) {
+    while (_sizeBytes > _maxSizeBytes || _imageRefCaches.length > _length) {
       if (_imageRefCaches.isEmpty) return;
       final keyFirst = _imageRefCaches.keys.first;
       final cache = _imageRefCaches[keyFirst]!;

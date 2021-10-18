@@ -58,6 +58,7 @@ class ListViewBuilder extends StatefulWidget {
     this.scrollController,
     this.finishLayout,
     this.refreshDelegate,
+    this.color = const Color.fromRGBO(236, 236, 236, 1),
   }) : super(key: key);
 
   final int? itemCount;
@@ -68,7 +69,7 @@ class ListViewBuilder extends StatefulWidget {
   final EdgeInsets padding;
   final ScrollController? scrollController;
   final FinishLayout? finishLayout;
-
+  final Color color;
   final RefreshDelegate? refreshDelegate;
   @override
   State<ListViewBuilder> createState() => _ListViewBuilderState();
@@ -110,7 +111,7 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
             delegate: delegate, itemExtent: widget.itemExtent!);
 
     return ColoredBox(
-      color: const Color.fromRGBO(236, 236, 236, 1),
+      color: widget.color,
       child: NotificationListener(
           onNotification: _onNotification,
           child: CustomScrollView(
@@ -179,7 +180,6 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
         }
       }
     } else if (n is ScrollEndNotification) {
-      Log.i(n.metrics.maxScrollExtent);
       if ((refresh.value - maxExtent).abs() < 0.5) {
         refresh._setMode(RefreshMode.refreshing);
       } else {
@@ -295,7 +295,7 @@ class _Refresh extends ChangeNotifier {
 
   double get value => _value;
   bool canRefresh = false;
-  bool _disallowTrailingIndicator = true;
+  bool _disallowTrailingIndicator = false;
   bool get disallowTrailingIndicator => _disallowTrailingIndicator;
   bool showTrailingIndicator = false;
 
