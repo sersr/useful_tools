@@ -13,10 +13,10 @@ Future<void> uiOverlay({bool hide = true}) {
   });
 }
 
-void uiStyle({bool dark = true}) {
+void uiStyle({bool dark = false}) {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: dark ? Brightness.dark : Brightness.light,
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
     systemNavigationBarColor: Colors.white,
   ));
 }
