@@ -330,7 +330,7 @@ class ImageRefCache {
           }
         } catch (e) {
           /// 图片解码失败
-          Log.e('$e', onlyDebug: false);
+          Log.e('$key\n$e', onlyDebug: false);
           error = true;
         } finally {
           _done = true;
