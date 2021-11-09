@@ -69,6 +69,9 @@ class ImageState extends State<ImageFuture> {
         widget.height != oldWidget.height ||
         widget.width != oldWidget.width ||
         _error) {
+      imageRefInfo?.dispose();
+      imageRefInfo = null;
+      _error = false;
       _sub();
     }
   }

@@ -10,13 +10,15 @@ Widget btn1(
     Color? splashColor,
     double? radius,
     EdgeInsets? padding,
+    ShapeBorder? shape,
     bool background = true}) {
   splashColor ??= Colors.grey[300];
-  radius ??= 0.0;
+  var borderRadius = radius == null ? null : BorderRadius.circular(radius);
 
   child = InkWell(
     splashColor: splashColor,
-    borderRadius: BorderRadius.circular(radius),
+    borderRadius: borderRadius,
+    customBorder: shape,
     onTap: onTap,
     onLongPress: onLongPress,
     onTapCancel: onTapCancel,
@@ -31,7 +33,8 @@ Widget btn1(
   return RepaintBoundary(
     child: background
         ? Material(
-            borderRadius: BorderRadius.circular(radius),
+            shape: shape,
+            borderRadius: borderRadius,
             color: bgColor,
             child: RepaintBoundary(child: child),
           )
