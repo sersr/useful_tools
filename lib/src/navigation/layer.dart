@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import '../change_notifier/change_notifier_select.dart';
 
 final _notifierMap = <Object, ValueNotifier<int>>{};

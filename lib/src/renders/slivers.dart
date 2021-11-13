@@ -124,10 +124,4 @@ class RenderSliverToBoxAdapter extends RenderSliverSingleBoxAdapter {
 
     setChildParentData(child!, constraints, geometry!);
   }
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    // if (no.value == 0.0) return;
-    super.paint(context, offset);
-  }
 }

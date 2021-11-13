@@ -1,8 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
 
 class AsyncText extends LeafRenderObjectWidget {
   const AsyncText.async(this.text, {Key? key})
@@ -26,7 +24,6 @@ class AsyncText extends LeafRenderObjectWidget {
 
   final TextPainter text;
   final bool needLayout;
-
 
   @override
   RenderObject createRenderObject(BuildContext context) {
