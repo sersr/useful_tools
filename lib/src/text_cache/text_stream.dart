@@ -1,8 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
-import '../../common.dart';
+import 'package:utils/utils.dart';
 
 class TextCache {
   void clear() {
@@ -115,11 +114,12 @@ class TextCache {
       try {
         await callback(putIfAbsentTextRef);
       } catch (s, e) {
-       assert(Log.e('...error:$s\n $e'));
+        assert(Log.e('...error:$s\n $e'));
       } finally {
         _map?.clear();
         await releaseUI;
         stream.setTextInfo(_list);
+        await releaseUI;
       }
     });
 

@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:utils/utils.dart';
 
-import '../../common.dart';
 import 'botton.dart';
 
 class ListItem extends StatelessWidget {

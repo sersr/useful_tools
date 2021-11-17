@@ -8,3 +8,4 @@ export 'binding.dart';
 export 'widgets.dart';
 export 'src/navigation/layer.dart';
 export 'src/navigation/slide_page_transition.dart';
+export 'package:utils/utils.dart';
