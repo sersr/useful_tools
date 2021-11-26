@@ -58,7 +58,7 @@ class ImageRefCache {
   final _liveImageRefs = <ListKey, ImageRefStream>{};
   final _imgQueue = EventQueue(channels: 4);
   final _loadQueue = EventQueue();
-  final _pathQueue = EventQueue.run();
+  final _pathQueue = EventQueue(channels: 10);
 
   static const _defaultSizeBytes = 40 << 20;
 
