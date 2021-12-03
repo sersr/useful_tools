@@ -15,6 +15,8 @@ class ListItem extends StatelessWidget {
     this.height,
     this.bgColor,
     this.splashColor,
+    this.padding,
+    this.outPadding,
   }) : super(key: key);
 
   final Widget child;
@@ -24,15 +26,19 @@ class ListItem extends StatelessWidget {
   final double? height;
   final Color? bgColor;
   final Color? splashColor;
-
+  final EdgeInsets? padding;
+  final EdgeInsets? outPadding;
   @override
   Widget build(BuildContext context) {
     return Container(
       constraints: height == null
           ? null
           : BoxConstraints(maxHeight: height!, minHeight: height!),
-      padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 10.0),
+      padding: outPadding ??
+          const EdgeInsets.symmetric(vertical: 3.0, horizontal: 2.0),
       child: btn1(
+          padding: padding ??
+              const EdgeInsets.symmetric(vertical: 3.0, horizontal: 10.0),
           onTap: onTap,
           background: background,
           onLongPress: onLongPress,
