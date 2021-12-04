@@ -35,10 +35,10 @@ class ListItem extends StatelessWidget {
           ? null
           : BoxConstraints(maxHeight: height!, minHeight: height!),
       padding: outPadding ??
-          const EdgeInsets.symmetric(vertical: 3.0, horizontal: 2.0),
+          const EdgeInsets.symmetric(vertical: 3.0, horizontal: 10.0),
       child: btn1(
-          padding: padding ??
-              const EdgeInsets.symmetric(vertical: 3.0, horizontal: 10.0),
+          elevation: 0.5,
+          padding: padding,
           onTap: onTap,
           background: background,
           onLongPress: onLongPress,

@@ -6,16 +6,17 @@ Widget btn1(
     VoidCallback? onTapCancel,
     void Function(TapDownDetails details)? onTapDown,
     Widget? child,
+    double elevation = 0.0,
     Color? bgColor,
-    Color? splashColor,
+    Color? splashColor = const Color.fromARGB(255, 228, 228, 228),
     double? radius,
     EdgeInsets? padding,
     ShapeBorder? shape,
     bool background = true}) {
-  splashColor ??= Colors.grey[300];
   var borderRadius = radius == null ? null : BorderRadius.circular(radius);
 
   child = InkWell(
+    splashFactory: InkRipple.splashFactory,
     splashColor: splashColor,
     borderRadius: borderRadius,
     customBorder: shape,
@@ -23,7 +24,7 @@ Widget btn1(
     onLongPress: onLongPress,
     onTapCancel: onTapCancel,
     onTapDown: onTapDown,
-    highlightColor: splashColor!.withAlpha(190),
+    highlightColor: splashColor?.withAlpha(190),
     child: Padding(
       padding: padding ?? EdgeInsets.zero,
       child: child,
@@ -33,6 +34,7 @@ Widget btn1(
   return RepaintBoundary(
     child: background
         ? Material(
+            elevation: elevation,
             shape: shape,
             borderRadius: borderRadius,
             color: bgColor,
