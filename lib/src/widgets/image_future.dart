@@ -135,7 +135,11 @@ class ImageState extends State<ImageFuture> {
 
   @override
   Widget build(BuildContext context) {
-    final image = RawImage(image: imageRefInfo?.image, fit: BoxFit.contain);
+    final image = RawImage(
+        image: imageRefInfo?.image,
+        width: widget.boxFit == BoxFit.fitWidth ? widget.width : null,
+        height: widget.boxFit == BoxFit.fitHeight ? widget.height : null,
+        fit: widget.boxFit);
     if (_error) {
       if (widget.errorBuilder != null) {
         return widget.errorBuilder!(context);

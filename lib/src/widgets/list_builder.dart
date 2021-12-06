@@ -37,7 +37,7 @@ class ListItem extends StatelessWidget {
       padding: outPadding ??
           const EdgeInsets.symmetric(vertical: 3.0, horizontal: 10.0),
       child: btn1(
-          elevation: 0.5,
+          elevation: 0.1,
           padding: padding,
           onTap: onTap,
           background: background,
