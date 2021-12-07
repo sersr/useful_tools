@@ -22,7 +22,6 @@ class TextCache {
 
   final _textLooper = EventQueue();
 
-  /// [LinkedHashMap]
   final _textListeners = <ListKey, TextStream>{};
 
   TextStream? getListener(ListKey key) {

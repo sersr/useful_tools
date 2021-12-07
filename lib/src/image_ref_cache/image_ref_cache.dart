@@ -56,9 +56,7 @@ class ImageRefCache {
   }
 
   final _liveImageRefs = <ListKey, ImageRefStream>{};
-  final _imgQueue = EventQueue(channels: 4);
   final _loadQueue = EventQueue();
-  final _pathQueue = EventQueue(channels: 10);
 
   static const _defaultSizeBytes = 40 << 20;
 
@@ -97,7 +95,7 @@ class ImageRefCache {
 
   static int timeWaitS = 1000 * 30;
 
-  bool timeOut(int time) {
+  bool timeout(int time) {
     return time + timeWaitS <= DateTime.now().millisecondsSinceEpoch;
   }
 
@@ -119,7 +117,7 @@ class ImageRefCache {
     assert(!_imageRefCaches.containsKey(key));
 
     if (listener != null) {
-      if (listener.error && timeOut(listener.time)) {
+      if (listener.error && timeout(listener.time)) {
         _liveImageRefs.remove(key);
         listener = null;
       }
@@ -221,13 +219,14 @@ class ImageRefCache {
         callback: (deferred, setImage) async {
       var _done = false;
       final w = ui.window;
-      void _sDone() {
+      void _autoDone() {
         _done = true;
         setImage(null, false);
       }
 
-      final path =
-          await _pathQueue.awaitEventTask(() => _def(deferred, () async {
+      final path = await EventQueue.runTaskOnQueue(
+          preCacheUrl,
+          () => _def(deferred, () async {
                 final _path = await getPath(url);
                 // 手动处理失败的情况
                 if (_path == null) {
@@ -235,7 +234,8 @@ class ImageRefCache {
                   setImage(null, true);
                 }
                 return _path;
-              }, _sDone, wait: () => scheduler.endOfFrame));
+              }, _autoDone, wait: () => scheduler.endOfFrame),
+          channels: 6);
       if (path == null) {
         assert(_done);
         return;
@@ -243,7 +243,7 @@ class ImageRefCache {
 
       final f = File(path);
       if (!await f.exists()) {
-        _sDone();
+        _autoDone();
         return;
       }
 
@@ -276,8 +276,9 @@ class ImageRefCache {
         }
       }
 
-      await _imgQueue.awaitEventTask(() => _def(deferred, _imageTask, _sDone));
-      assert(_done);
+      EventQueue.runTaskOnQueue(
+          this, () => _def(deferred, _imageTask, _autoDone),
+          channels: 4);
     });
   }
 
@@ -292,14 +293,15 @@ class ImageRefCache {
         [...keys, cacheWidth, cacheHeight, fit, 'preCacheUrlMemory'],
         callback: (deferred, setImage) async {
       var _done = false;
-      final w = ui.window;
-      void _sDone() {
+      final devicePixelRatio = ui.window.devicePixelRatio;
+      void _autoDone() {
         _done = true;
         setImage(null, false);
       }
 
-      final bytes =
-          await _pathQueue.awaitEventTask(() => _def(deferred, () async {
+      final bytes = await EventQueue.runTaskOnQueue(
+          preCacheUrlMemory,
+          () => _def(deferred, () async {
                 final bytes = await getPath();
                 // 手动处理失败的情况
                 if (bytes == null) {
@@ -307,7 +309,8 @@ class ImageRefCache {
                   setImage(null, true);
                 }
                 return bytes;
-              }, _sDone, wait: () => scheduler.endOfFrame));
+              }, _autoDone, wait: () => scheduler.endOfFrame),
+          channels: 6);
 
       if (bytes == null) {
         assert(_done);
@@ -319,18 +322,16 @@ class ImageRefCache {
         var error = false;
 
         try {
-          await releaseUI;
-
           if (fit == BoxFit.fitHeight) {
             image = await _decode(bytes,
-                cacheHeight: (cacheHeight * w.devicePixelRatio).toInt());
+                cacheHeight: (cacheHeight * devicePixelRatio).toInt());
           } else {
             image = await _decode(bytes,
-                cacheWidth: (cacheWidth * w.devicePixelRatio).toInt());
+                cacheWidth: (cacheWidth * devicePixelRatio).toInt());
           }
         } catch (e) {
           /// 图片解码失败
-          Log.e('$key\n$e', onlyDebug: false);
+          Log.e('$key\n$e', lines: 3, onlyDebug: false);
           error = true;
         } finally {
           _done = true;
@@ -343,7 +344,8 @@ class ImageRefCache {
         }
       }
 
-      await _imgQueue.awaitEventTask(() => _def(deferred, _imageTask, _sDone));
+      EventQueue.runTaskOnQueue(
+          this, () => _def(deferred, _imageTask, _autoDone));
     });
   }
 
