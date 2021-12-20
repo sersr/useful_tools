@@ -42,7 +42,16 @@ class _Resampler {
   void sample() {
     final scheduler = SchedulerBinding.instance;
     final isNotEmpty = _resamplers.isNotEmpty;
+    final sampleTime = _llf;
+    final nextSampleTime = _lastFrameTime;
 
+    for (final resampler in _resamplers.values) {
+      resampler.resample(sampleTime, nextSampleTime, _handlePointerEvent);
+    }
+
+    _resamplers.removeWhere((int key, Resampler resampler) {
+      return !resampler.hasPendingEvents && !resampler.isDown;
+    });
     if (!_frameCallbackScheduled && isNotEmpty) {
       _frameCallbackScheduled = true;
       scheduler?.scheduleFrameCallback((_) {
@@ -58,16 +67,6 @@ class _Resampler {
 
   /// 实现
   void _sample() {
-    final sampleTime = _llf;
-    final nextSampleTime = _lastFrameTime;
-
-    for (final resampler in _resamplers.values) {
-      resampler.resample(sampleTime, nextSampleTime, _handlePointerEvent);
-    }
-
-    _resamplers.removeWhere((int key, Resampler resampler) {
-      return !resampler.hasPendingEvents && !resampler.isDown;
-    });
     sample();
   }
 
@@ -92,9 +91,12 @@ mixin NopGestureBinding on GestureBinding {
   static NopGestureBinding? _instance;
   static NopGestureBinding? get instance => _instance;
   @override
-  void handlePointerEvent(PointerEvent event) {
+  void handlePointerEvent(PointerEvent event, {bool self = false}) {
     assert(!locked);
-
+    if (self) {
+      super.handlePointerEvent(event);
+      return;
+    }
     if (nopResamplingEnabled) {
       _resampler.addOrDispatch(event);
 
@@ -117,7 +119,7 @@ mixin NopGestureBinding on GestureBinding {
   }
 
   void _handleEvent(PointerEvent event) {
-    super.handlePointerEvent(event);
+    handlePointerEvent(event, self: true);
   }
 
   /// 不使用[samplingOffset]

@@ -12,8 +12,14 @@ import 'image_ref_info.dart';
 class ImageRefCache {
   Future<ui.Image> _decode(Uint8List bytes,
       {int? cacheWidth, int? cacheHeight}) async {
-    final codec = await imageCodec(bytes,
-        cacheHeight: cacheHeight, cacheWidth: cacheWidth);
+    final ui.Codec codec;
+    if (kDartIsWeb) {
+      codec = await ui.instantiateImageCodec(bytes,
+          targetHeight: cacheHeight, targetWidth: cacheWidth);
+    } else {
+      codec = await imageCodec(bytes,
+          cacheWidth: cacheWidth, cacheHeight: cacheHeight);
+    }
     final frameInfo = await codec.getNextFrame();
 
     return frameInfo.image;
@@ -338,7 +344,7 @@ class ImageRefCache {
           final local = image?.clone();
           image?.dispose();
           _loadQueue.addEventTask(() async {
-            await scheduler.endOfFrame;
+            // await scheduler.endOfFrame;
             await setImage(local, error);
           });
         }

@@ -33,9 +33,7 @@ class TextCache {
     if (textRef == null) {
       textRef = _textRefCaches.remove(key);
       if (textRef != null) {
-        assert(Log.i('move textRef'));
-        textRef.reset();
-        _liveTextRefs[key] = textRef;
+        _liveTextRefs[key] = textRef..reset();
       }
     }
 
@@ -61,11 +59,11 @@ class TextCache {
 
     _textLooper.addEventTask(() async {
       // innerCaches
-      Map<ListKey, TextInfo>? _map;
+      final _map = <ListKey, TextInfo>{};
       List<TextInfo> _list = [];
 
       TextInfo? innerGetTextRef(ListKey key) {
-        var info = _map![key]?.clone();
+        var info = _map[key]?.clone();
         info ??= getTextRef(key);
         return info;
       }
@@ -75,18 +73,16 @@ class TextCache {
       /// 返回的 [TextInfo] 不能调用 dispose
       TextInfo putIfAbsentTextRef(List keys, TextPainterBuilder builder) {
         final key = ListKey(keys);
-        _map ??= <ListKey, TextInfo>{};
 
         var _textInfo = innerGetTextRef(key);
         if (_textInfo == null) {
-          assert(!_map!.containsKey(key));
+          assert(!_map.containsKey(key));
           final _built = builder();
 
           final _text = _liveTextRefs[key] = _TextRef(_built, (ref) {
             assert(!_textRefCaches.containsKey(key));
 
             final text = _liveTextRefs[key];
-            // 有可能不是同一个对象
             if (text == ref) {
               _liveTextRefs.remove(key);
               if (_textRefCaches.length > 150) {
@@ -96,7 +92,7 @@ class TextCache {
               _textRefCaches[key] = ref;
             }
           });
-          _textInfo = _map![key] = TextInfo.text(_text);
+          _textInfo = _map[key] = TextInfo.text(_text);
         }
         _list.add(_textInfo);
         return _textInfo;
@@ -105,7 +101,7 @@ class TextCache {
       await releaseUI;
 
       if (stream.isEmpty) {
-        _map?.clear();
+        _map.clear();
         _list.forEach(TextInfo.disposeTextInfo);
         stream.setTextInfo(null);
         return;
@@ -113,9 +109,9 @@ class TextCache {
       try {
         await callback(putIfAbsentTextRef);
       } catch (s, e) {
-        assert(Log.e('...error:$s\n $e'));
+        assert(Log.e('error:$s\n$e'));
       } finally {
-        _map?.clear();
+        _map.clear();
         await releaseUI;
         stream.setTextInfo(_list);
         await releaseUI;
