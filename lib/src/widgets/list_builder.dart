@@ -399,7 +399,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
         final onRefreshing = r.onRefreshing;
         // 在刷新期间是否阻止再次刷新事件？
         if (onRefreshing != null) {
-          EventQueue.runTaskOnQueue(_RefreshWidgetState, () async {
+          EventQueue.runTask(_RefreshWidgetState, () async {
             if (!mounted) return;
             bool _con() {
               return controller == refresh &&

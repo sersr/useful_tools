@@ -230,7 +230,7 @@ class ImageRefCache {
         setImage(null, false);
       }
 
-      final path = await EventQueue.runTaskOnQueue(
+      final path = await EventQueue.runTask(
           preCacheUrl,
           () => _def(deferred, () async {
                 final _path = await getPath(url);
@@ -282,7 +282,7 @@ class ImageRefCache {
         }
       }
 
-      EventQueue.runTaskOnQueue(
+      EventQueue.runTask(
           this, () => _def(deferred, _imageTask, _autoDone),
           channels: 4);
     });
@@ -305,7 +305,7 @@ class ImageRefCache {
         setImage(null, false);
       }
 
-      final bytes = await EventQueue.runTaskOnQueue(
+      final bytes = await EventQueue.runTask(
           preCacheUrlMemory,
           () => _def(deferred, () async {
                 final bytes = await getPath();
@@ -350,7 +350,7 @@ class ImageRefCache {
         }
       }
 
-      EventQueue.runTaskOnQueue(
+      EventQueue.runTask(
           this, () => _def(deferred, _imageTask, _autoDone));
     });
   }

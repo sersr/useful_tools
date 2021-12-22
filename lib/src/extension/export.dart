@@ -1,0 +1,1 @@
+export 'navgator.dart';
