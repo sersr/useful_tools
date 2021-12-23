@@ -162,7 +162,7 @@ class ImageRefCache {
 
     LoadStatus _defLoad() {
       if (!stream.hasListener) {
-        Log.e('stream：no listeners');
+        assert(Log.e('stream: no listeners'));
 
         /// 如果资源没被释放，那么 [_pictures] 中必定包含[stream]对象
         /// 因为移动操作只有当前任务完成之后才有效
