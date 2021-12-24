@@ -5,8 +5,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:utils/utils.dart';
 
 class NavObserver extends NavigatorObserver {
-  bool get mounted => overlay?.mounted ?? false;
-
   OverlayState? get overlay => navigator?.overlay;
 
   @pragma('vm:prefer-inline')
@@ -51,67 +49,61 @@ class NavObserver extends NavigatorObserver {
   // }
 }
 
-typedef _Callback<T> = FutureOr<T> Function();
-
 typedef BoolOverlayStatus = bool Function();
 typedef OverlayGetter = FutureOr<OverlayState> Function();
 
 abstract class NavGlobal {
   final NavObserver observer = NavObserver();
 
-  Future<OverlayState>? _future;
-  Future<OverlayState> _getOverlay() {
-    return _future ??= EventQueue.runTask(observer, () async {
-      var count = 0;
-      while (true) {
-        final overlayState = observer.overlay;
-        if (overlayState != null) {
-          return overlayState;
-        }
-
-        assert(count++ == 0 || Log.e('count: $count'));
-        final instance = SchedulerBinding.instance;
-        if (instance == null) {
-          await release(const Duration(milliseconds: 16));
-        } else {
-          await instance.endOfFrame;
-        }
-      }
-    });
-  }
-
-  bool get _mouted => _overlayState?.mounted ?? false;
-
   OverlayState? _overlayState;
+  FutureOr<OverlayState> getOverlay() => overlayState;
+
   FutureOr<OverlayState> get overlayState {
     _overlayState = observer.overlay;
     if (_overlayState == null || !_overlayState!.mounted) {
-      if (_future != null) {
-        return _future!.then((value) {
-          if (value.mounted) return _overlayState = value;
-          _future = null;
-          return _default();
-        });
-      }
-      return _default();
+      return _future?.then((value) {
+            if (value.mounted) return _overlayState = value;
+            _future = null;
+            return _getDefault();
+          }) ??
+          _getDefault();
     }
 
     return _overlayState!;
   }
 
-  Future<OverlayState> _default() {
-    return _getOverlay().then((state) {
-      if (_mouted) return _overlayState!;
-      return _overlayState = state;
-    });
+  Future<OverlayState>? _future;
+
+  Future<OverlayState> _getDefault() {
+    return _future ??= EventQueue.runTask(observer, _default);
   }
 
-  FutureOr<OverlayState> getOverlay() {
-    return overlayState;
+  Future<OverlayState> _default() async {
+    var count = 0;
+    while (true) {
+      final overlay = observer.overlay;
+      if (overlay != null && overlay.mounted) {
+        return _overlayState = overlay;
+      }
+      assert(count++ == -1 || !debugMode || Log.w('count: $count'));
+      await waitForFrame();
+    }
   }
 
-  bool overlayStatus() {
-    return observer.navigator?.overlay?.mounted ?? false;
+  bool overlayStatus() => observer.overlay?.mounted ?? false;
+}
+
+Future<void> waitForFrame() {
+  return SchedulerBinding.instance?.endOfFrame ??
+      release(const Duration(milliseconds: 16));
+}
+
+FutureOr<void> waitOverlay(FutureOr<void> Function(OverlayState) run) async {
+  while (true) {
+    final overlaystate = await Nav.overlayState;
+    if (overlaystate.mounted) return run(overlaystate);
+
+    await waitForFrame();
   }
 }
 

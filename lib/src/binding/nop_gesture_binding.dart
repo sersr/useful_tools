@@ -42,8 +42,8 @@ class _Resampler {
   void sample() {
     final scheduler = SchedulerBinding.instance;
     final isNotEmpty = _resamplers.isNotEmpty;
-    final sampleTime = _llf;
-    final nextSampleTime = _lastFrameTime;
+    final sampleTime = _lastFrameTime;
+    final nextSampleTime = _frameTime;
 
     for (final resampler in _resamplers.values) {
       resampler.resample(sampleTime, nextSampleTime, _handlePointerEvent);
@@ -123,7 +123,7 @@ mixin NopGestureBinding on GestureBinding {
   }
 
   /// 不使用[samplingOffset]
-  bool nopResamplingEnabled = true;
+  bool nopResamplingEnabled = false;
 
   late final _Resampler _resampler = _Resampler(
     _handleEvent,

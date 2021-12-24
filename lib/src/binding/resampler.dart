@@ -89,34 +89,25 @@ class Resampler {
   }
 
   var _position = Offset.zero;
-  PointerEvent? firstEvent;
-  PointerEvent? lastEvent;
+  PointerEvent? _last;
+  PointerEvent? _next;
 
   /// 拿到小于当前[vsyncTime]的最大指针事件
   void _processPointerEvents(Duration vsyncTime) {
     final list = _queuedEvents.toList();
-    PointerEvent? _last;
-    PointerEvent? _first;
+    PointerEvent? next;
+
     var i = list.length - 1;
-    // var count = -1;
     for (; i >= 0; i--) {
       final event = list[i];
-      // count = i;
       if (event.timeStamp <= vsyncTime) {
-        _last = event;
-        final _fi = i - 1;
-
-        assert(_fi < list.length);
-
-        if (_fi >= 0) {
-          _first = list[_fi];
-        }
+        next = event;
         break;
       }
     }
-    // Log.i('${count + 1} | ${list.length}', onlyDebug: false, showPath: false);
-    lastEvent = _last;
-    firstEvent = _first ?? _last;
+    
+    _next = next;
+    _last ??= next;
   }
 
   bool _isTracked = false;
@@ -128,13 +119,10 @@ class Resampler {
       HandleEventCallback callback) {
     _processPointerEvents(vsyncTime);
 
-    final _last = lastEvent;
-    final _first = firstEvent;
-
-    if (_last == null || _first == null) return;
+    if (_last == null || _next == null) return;
 
     final sampleTime = vsyncTime - const Duration(milliseconds: 5);
-    final _lastTimeStamp = _last.timeStamp;
+
     var endTime = sampleTime;
     final Iterator<PointerEvent> it = _queuedEvents.iterator;
     while (it.moveNext()) {
@@ -162,15 +150,11 @@ class Resampler {
       }
     }
     var position = _positionAt(sampleTime);
-    final _e = sampleTime == endTime;
+
     while (_queuedEvents.isNotEmpty) {
       final event = _queuedEvents.first;
-      if (_e && event == _queuedEvents.last) {
-        // 保留最后一个指针事件
-        if (event.timeStamp > _lastTimeStamp) {
-          break;
-        }
-      } else if (event.timeStamp > endTime) {
+
+      if (event.timeStamp > endTime) {
         break;
       }
 
@@ -206,34 +190,48 @@ class Resampler {
       _queuedEvents.removeFirst();
     }
 
-    if (position != _position && _isTracked) {
-      final delta = position - _position;
+    if (_isTracked) {
+      _samplePointerPosition(sampleTime, callback);
+    }
+  }
 
-      callback(_toMoveOrHoverEvent(_first, position, delta, _pointerIdentifier,
+  void _samplePointerPosition(
+    Duration sampleTime,
+    HandleEventCallback callback,
+  ) {
+    // Position at `sampleTime`.
+    final Offset position = _positionAt(sampleTime);
+
+    // Add `move` or `hover` events if position has changed.
+    final PointerEvent? last = _last;
+    if (position != _position && last != null) {
+      final Offset delta = position - _position;
+      callback(_toMoveOrHoverEvent(last, position, delta, _pointerIdentifier,
           sampleTime, _isDown, _hasButtons));
       _position = position;
     }
   }
 
   Offset _positionAt(Duration sampleTime) {
-    final _last = lastEvent;
-    final _first = firstEvent;
-    if (_last == null || _first == null) return Offset.zero;
-    final _p = _last.position;
-    var x = _p.dx;
-    var y = _p.dy;
+    // Use `next` position by default.
+    double x = _next?.position.dx ?? 0.0;
+    double y = _next?.position.dy ?? 0.0;
 
-    final touchTimeDiff = _last.timeStamp - _first.timeStamp;
-    final touchSampleTimeDiff = sampleTime - _last.timeStamp;
+    final Duration nextTimeStamp = _next?.timeStamp ?? Duration.zero;
+    final Duration lastTimeStamp = _last?.timeStamp ?? Duration.zero;
 
-    final diff = touchTimeDiff.inMicroseconds.toDouble();
-    if (diff == 0) return _p;
+    // Resample if `next` time stamp is past `sampleTime`.
+    if (nextTimeStamp > sampleTime && nextTimeStamp > lastTimeStamp) {
+      final double interval =
+          (nextTimeStamp - lastTimeStamp).inMicroseconds.toDouble();
+      final double scalar =
+          (sampleTime - lastTimeStamp).inMicroseconds.toDouble() / interval;
+      final double lastX = _last?.position.dx ?? 0.0;
+      final double lastY = _last?.position.dy ?? 0.0;
+      x = lastX + (x - lastX) * scalar;
+      y = lastY + (y - lastY) * scalar;
+    }
 
-    final alpha = touchSampleTimeDiff.inMicroseconds.toDouble() / diff;
-
-    final positonDiff = _last.position - _first.position;
-    x += positonDiff.dx * alpha;
-    y += positonDiff.dy * alpha;
     return Offset(x, y);
   }
 
