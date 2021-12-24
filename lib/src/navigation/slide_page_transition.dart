@@ -78,7 +78,7 @@ class SlidePageTransition extends PageTransitionsBuilder {
     ///
     /// 在动画中每一帧都要重新创建 ？？？
     /// [CurvedAnimation] 没有得到释放，一直在监听列表中
-    /// 在调试页面可观察到[CurvedAnimation]实例一直增加，很恐怖！！
+    /// 在调试页面可观察到[CurvedAnimation]实例一直增加
     final reverseOutter = animation.status == AnimationStatus.reverse;
     final reverseInner = secondaryAnimation.status == AnimationStatus.reverse;
     final linearTransition =

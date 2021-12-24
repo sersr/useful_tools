@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../navigation/export.dart';
-import 'nav_snackbar.dart';
-import 'nav_toast.dart';
+import '../navigation/nav_snackbar.dart';
+import '../navigation/nav_toast.dart';
 
-extension SnackBarExt on NavGlobal {
-  OverlayState? get overlay => observer.navigator?.overlay;
-
+extension SnackBarExt on OverlayBase {
   SnackbarDelagate snackBar(
     Widget content, {
     Duration duration = const Duration(seconds: 3),

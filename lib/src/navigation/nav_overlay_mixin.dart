@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:utils/utils.dart';
 
-import '../navigation/navigator_observer.dart';
+import 'export.dart';
 
 /// 必须先调用[init]初始化
+///
+/// 提供动画基础
 mixin OverlayMixin {
   OverlayState? _overlayState;
   OverlayEntry? _entry;
@@ -127,9 +129,15 @@ mixin OverlayMixin {
 mixin OverlayDelagete {
   @protected
   Object get key;
+  OverlayBase get overlayBase => Nav;
 
   void init() {
-    EventQueue.runOne(key, () => waitOverlay(initRun));
+    EventQueue.runOne(
+        key,
+        () => waitOverlay(
+              initRun,
+              overlayGetter: overlayBase.getOverlay,
+            ));
   }
 
   @protected
