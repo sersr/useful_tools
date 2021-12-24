@@ -12,6 +12,9 @@ Future<void> uiOverlay({bool hide = true}) {
   });
 }
 
+/// 用于初始化
+///
+/// note: 复杂场景使用[AnnotatedRegion],[SystemUiOverlayStyle]
 void uiStyle({bool dark = false}) {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,

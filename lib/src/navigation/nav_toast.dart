@@ -31,19 +31,21 @@ class ToastController with OverlayMixin {
         builder: (context, child) {
           return IgnorePointer(ignoring: _ignore.value, child: child);
         },
-        child: GestureDetector(
-          onTap: hide,
-          child: FadeTransition(
-            opacity: tween.animate(controller),
-            child: RepaintBoundary(
-              child: Center(
-                child: IntrinsicWidth(
-                  child: Material(
-                    color: color,
-                    borderRadius: radius,
-                    child: Container(
-                      padding: padding,
-                      child: content,
+        child: SafeArea(
+          child: GestureDetector(
+            onTap: hide,
+            child: FadeTransition(
+              opacity: fadeAnimation,
+              child: RepaintBoundary(
+                child: Center(
+                  child: IntrinsicWidth(
+                    child: Material(
+                      color: color,
+                      borderRadius: radius,
+                      child: Container(
+                        padding: padding,
+                        child: content,
+                      ),
                     ),
                   ),
                 ),
@@ -56,7 +58,7 @@ class ToastController with OverlayMixin {
   }
 
   final _ignore = ValueNotifier(true);
-
+  late final fadeAnimation = curve.animate(controller);
   @override
   void onCompleted() {
     if (hided) {
@@ -92,7 +94,7 @@ class ToastController with OverlayMixin {
   }
 }
 
-class ToastDelegate with OverlayDelagete {
+class ToastDelegate with OverlayDelegate {
   ToastDelegate(this._toastController, this.duration);
 
   final ToastController _toastController;
@@ -102,7 +104,7 @@ class ToastDelegate with OverlayDelagete {
   Future<void> get future => _toastController.future;
   @override
   FutureOr<void> initRun(OverlayState overlayState) async {
-    assert(overlayState.mounted, '这是一条严重的错误信息，请重新检查代码');
+    assert(overlayState.mounted, '确保 `overlayState.mounted` == true');
     _toastController
       ..init(overlayState: overlayState, duration: duration)
       ..show();

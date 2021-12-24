@@ -23,6 +23,7 @@ mixin OverlayMixin {
     }
   }
 
+
   final tween = Tween<double>(begin: 0.0, end: 1.0);
   late final curve = tween.chain(CurveTween(curve: Curves.ease));
   double get tweenValue => controller.drive(curve).value;
@@ -84,8 +85,9 @@ mixin OverlayMixin {
   }
 
   void onShow() {
-    if (!active) return;
-    controller.forward();
+    if (mounted) {
+      controller.forward();
+    }
   }
 
   bool get mounted => _overlayState?.mounted ?? false;
@@ -96,12 +98,13 @@ mixin OverlayMixin {
   void hide() {
     if (!active) return;
     _hided = true;
-    if (shouldHide() && mounted) onHide();
+    onHide();
   }
 
   void onHide() {
-    if (!active) return;
-    controller.reverse();
+    if (shouldHide() && mounted) {
+      controller.reverse();
+    }
   }
 
   bool shouldHide() => true;
@@ -126,7 +129,7 @@ mixin OverlayMixin {
 }
 
 /// 异步
-mixin OverlayDelagete {
+mixin OverlayDelegate {
   @protected
   Object get key;
   OverlayBase get overlayBase => Nav;

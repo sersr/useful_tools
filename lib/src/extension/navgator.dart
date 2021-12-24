@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../navigation/export.dart';
-import '../navigation/nav_snackbar.dart';
-import '../navigation/nav_toast.dart';
+
+typedef SnackbarDelegate = OverlayDismissibleDelegate;
+typedef BannerDelegate = OverlayDismissibleDelegate;
 
 extension SnackBarExt on OverlayBase {
-  SnackbarDelagate snackBar(
+  SnackbarDelegate snackBar(
     Widget content, {
     Duration duration = const Duration(seconds: 3),
     Duration animationDuration = const Duration(milliseconds: 300),
@@ -19,7 +20,23 @@ extension SnackBarExt on OverlayBase {
     );
   }
 
-  Future<void> showSnackBar(SnackbarDelagate snackbar) {
+  BannerDelegate banner(
+    Widget content, {
+    Duration duration = const Duration(seconds: 3),
+    Duration animationDuration = const Duration(milliseconds: 300),
+    Duration delayDuration = Duration.zero,
+    BorderRadius? radius = const BorderRadius.all(Radius.circular(12)),
+  }) {
+    return _syncBanner(
+      content,
+      duration: duration,
+      animationDuration: animationDuration,
+      delayDuration: delayDuration,
+      radius: radius,
+    );
+  }
+
+  Future<void> showSnackBar(SnackbarDelegate snackbar) {
     snackbar.init();
     return snackbar.future;
   }
@@ -44,14 +61,33 @@ extension SnackBarExt on OverlayBase {
   }
 }
 
-SnackbarDelagate _syncSnackBar(
+SnackbarDelegate _syncSnackBar(
   Widget content, {
   Duration duration = const Duration(seconds: 3),
   Duration animationDuration = const Duration(milliseconds: 300),
   Duration delayDuration = Duration.zero,
 }) {
   final controller = SnackBarController(stay: duration, content: content);
-  return SnackbarDelagate(
+  return SnackbarDelegate(
+    controller,
+    animationDuration,
+    delayDuration: delayDuration,
+  )..init();
+}
+
+BannerDelegate _syncBanner(
+  Widget content, {
+  Duration duration = const Duration(seconds: 3),
+  Duration animationDuration = const Duration(milliseconds: 300),
+  Duration delayDuration = Duration.zero,
+  BorderRadius? radius,
+}) {
+  final controller = BannerController(
+    stay: duration,
+    content: content,
+    radius: radius,
+  );
+  return BannerDelegate(
     controller,
     animationDuration,
     delayDuration: delayDuration,
