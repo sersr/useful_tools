@@ -10,10 +10,8 @@ import 'export.dart';
 /// 提供动画基础
 mixin OverlayMixin {
   OverlayState? _overlayState;
-  OverlayEntry? _entry;
 
   OverlayState get overlay => _overlayState!;
-  OverlayEntry get entry => _entry!;
   Future<void> get future => _completer.future;
 
   late final _completer = Completer<void>();
@@ -22,7 +20,6 @@ mixin OverlayMixin {
       _completer.complete();
     }
   }
-
 
   final tween = Tween<double>(begin: 0.0, end: 1.0);
   late final curve = tween.chain(CurveTween(curve: Curves.ease));
@@ -46,18 +43,13 @@ mixin OverlayMixin {
     if (mounted) {
       _inited = true;
       controller = AnimationController(vsync: overlayState, duration: duration);
-      _entry = OverlayEntry(builder: build);
-      overlay.insert(entry);
       controller.addStatusListener(listenStatus);
-    } else {
-      _overlayState = null;
-      _entry?.remove();
+      onCreateOverlayEntry();
     }
   }
 
   void listenStatus(AnimationStatus status) {
     if (closed) return;
-
     switch (controller.status) {
       case AnimationStatus.completed:
         onCompleted();
@@ -79,15 +71,12 @@ mixin OverlayMixin {
 
   bool get active => _inited && !_closed;
 
-  void show() {
-    if (!active) return;
-    onShow();
-  }
-
-  void onShow() {
-    if (mounted) {
-      controller.forward();
-    }
+  FutureOr<bool> showAsync() => show();
+  bool show() {
+    if (!active || !mounted) return false;
+    _hided = false;
+    controller.forward();
+    return true;
   }
 
   bool get mounted => _overlayState?.mounted ?? false;
@@ -95,16 +84,15 @@ mixin OverlayMixin {
   bool _hided = false;
   bool get hided => _hided;
 
-  void hide() {
-    if (!active) return;
-    _hided = true;
-    onHide();
-  }
-
-  void onHide() {
-    if (shouldHide() && mounted) {
+  bool hide() {
+    if (!active || !(shouldHide() && mounted)) return false;
+    if (controller.isDismissed) {
+      onDismissed();
+    } else if (controller.status != AnimationStatus.reverse && !hided) {
+      _hided = true;
       controller.reverse();
     }
+    return true;
   }
 
   bool shouldHide() => true;
@@ -117,15 +105,14 @@ mixin OverlayMixin {
     if (!active) return;
     _closed = true;
     _complete();
-    if (entry.mounted) {
-      entry.remove();
-    }
+    onRemoveOverlayEntry();
     controller.dispose();
-    onClose();
   }
 
   @protected
-  void onClose() {}
+  void onCreateOverlayEntry() {}
+  @protected
+  void onRemoveOverlayEntry() {}
 }
 
 /// 异步
@@ -143,6 +130,127 @@ mixin OverlayDelegate {
             ));
   }
 
+  Future<void> get future;
+  bool get active;
+  bool get done;
+
   @protected
   FutureOr<void> initRun(OverlayState overlayState) {}
+}
+
+class OverlayMixinDelegate with OverlayDelegate {
+  OverlayMixinDelegate(this._controller, this.duration,
+      {this.delayDuration = Duration.zero});
+  @override
+  Object get key => _controller;
+  final OverlayMixin _controller;
+
+  final Duration duration;
+  final Duration delayDuration;
+
+  bool _cancel = false;
+
+  @override
+  FutureOr<void> initRun(OverlayState overlayState) async {
+    if (active) return;
+    assert(overlayState.mounted);
+    _controller.init(overlayState: overlayState, duration: duration);
+    if (delayDuration != Duration.zero) {
+      await release(delayDuration);
+    }
+    // 如果没有调用一次`show`,`hide`不会触发状态监听
+    if (_cancel) {
+      _controller.hide();
+    } else {
+      _controller.showAsync();
+    }
+    return future;
+  }
+
+  void show() {
+    _cancel = false;
+    if (done) _controller.showAsync();
+  }
+
+  @override
+  Future<void> get future => _controller.future;
+  @override
+  bool get active => _controller.active;
+  @override
+  bool get done => _controller.inited;
+
+  void hide() {
+    _cancel = true;
+    if (done) _controller.hide();
+  }
+}
+
+class OverlayMixinMultiDelegate with OverlayDelegate {
+  OverlayMixinMultiDelegate(List<OverlayMixin> controllers, this.duration,
+      {this.delayDuration = Duration.zero})
+      : _controllers = List.of(controllers, growable: false);
+  @override
+  Object get key => _controllers;
+  final List<OverlayMixin> _controllers;
+
+  final Duration duration;
+  final Duration delayDuration;
+
+  bool _cancel = false;
+
+  bool get mounted => _controllers.every((element) => element.mounted);
+
+  @override
+  FutureOr<void> initRun(OverlayState overlayState) async {
+    if (active) return;
+    assert(overlayState.mounted);
+    for (var item in _controllers) {
+      item.init(overlayState: overlayState, duration: duration);
+    }
+    if (delayDuration != Duration.zero) {
+      await release(delayDuration);
+    }
+    // 如果没有调用一次`show`,`hide`不会触发状态监听
+    _cancel ? forEach(_close) : forEach(_show);
+    return future;
+  }
+
+  void show() {
+    _cancel = false;
+    if (done) forEach(_show);
+  }
+
+  @override
+  Future<void> get future =>
+      Future.wait(_controllers.map((element) => element.future));
+  @override
+  bool get active => _controllers.every((element) => element.active);
+  @override
+  bool get done => _controllers.every((element) => element.inited);
+
+  void hide() {
+    _cancel = true;
+    if (done) {
+      forEach(_hide);
+    }
+  }
+
+  void _hide(OverlayMixin overlay) {
+    overlay.hide();
+  }
+
+  void _show(OverlayMixin overlay) {
+    overlay.showAsync();
+  }
+
+  void _close(OverlayMixin overlay) {
+    overlay.close();
+  }
+
+  @pragma('vm:prefer-inline')
+  void forEach(void Function(OverlayMixin overlay) action) {
+    for (var item in _controllers) {
+      action(item);
+    }
+  }
 }

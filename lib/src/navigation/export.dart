@@ -5,5 +5,5 @@ export 'nav_snackbar.dart';
 export 'nav_toast.dart';
 export 'navigator_observer.dart';
 export 'overlay.dart';
-export 'overlay_dismissible.dart';
+export 'overlay_side.dart';
 export 'slide_page_transition.dart';

@@ -16,11 +16,17 @@ Future<void> uiOverlay({bool hide = true}) {
 ///
 /// note: 复杂场景使用[AnnotatedRegion],[SystemUiOverlayStyle]
 void uiStyle({bool dark = false}) {
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+  SystemChrome.setSystemUIOverlayStyle(getOverlayStyle(dark: dark));
+}
+
+SystemUiOverlayStyle getOverlayStyle({bool dark = false, bool? statusDark}) {
+  return SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-    systemNavigationBarColor: Colors.white,
-  ));
+    statusBarIconBrightness:
+        statusDark ?? dark ? Brightness.light : Brightness.dark,
+    systemNavigationBarColor:
+        dark ? const Color.fromARGB(255, 29, 29, 29) : Colors.white,
+  );
 }
 
 Future<void> setOrientation(bool portrait) {

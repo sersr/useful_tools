@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 
 import 'nav_overlay_mixin.dart';
-import 'overlay_dismissible.dart';
+import 'overlay_side.dart';
 
-class SnackBarController with OverlayMixin, OverlayDismissible {
+class SnackBarController with OverlayMixin, OverlaySide {
   SnackBarController({
     required this.stay,
     required this.content,
+    this.color,
   });
   @override
   final Duration stay;
   @override
   final Widget content;
+  @override
+  final Color? color;
 
   @override
   double? get positionTop => null;
@@ -20,7 +23,7 @@ class SnackBarController with OverlayMixin, OverlayDismissible {
   Object get showKey => SnackBarController;
 
   @override
-  Widget buildChild(BuildContext context, Widget child) {
+  Widget buildChild(BuildContext context, {required Widget child}) {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) {
@@ -30,7 +33,7 @@ class SnackBarController with OverlayMixin, OverlayDismissible {
           child: child,
         );
       },
-      child: child,
+      child: super.buildChild(context, child: child),
     );
   }
 }
