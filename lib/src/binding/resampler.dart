@@ -96,18 +96,28 @@ class Resampler {
   void _processPointerEvents(Duration vsyncTime) {
     final list = _queuedEvents.toList();
     PointerEvent? next;
+    PointerEvent? lastCache = _last;
 
-    var i = list.length - 1;
-    for (; i >= 0; i--) {
+    _last = _next;
+
+    if (_last == null && list.isNotEmpty) {
+      _last = list[0];
+    }
+
+    // 获取最后一个满足条件的`PointerEvent`
+    for (var i = list.length - 1; i >= 0; i--) {
       final event = list[i];
       if (event.timeStamp <= vsyncTime) {
         next = event;
         break;
       }
     }
-    
-    _next = next;
-    _last ??= next;
+
+    if (_next == next) {
+      _last = lastCache;
+    } else {
+      _next = next;
+    }
   }
 
   bool _isTracked = false;
@@ -203,10 +213,10 @@ class Resampler {
     final Offset position = _positionAt(sampleTime);
 
     // Add `move` or `hover` events if position has changed.
-    final PointerEvent? last = _last;
-    if (position != _position && last != null) {
+    final PointerEvent? next = _next;
+    if (position != _position && next != null) {
       final Offset delta = position - _position;
-      callback(_toMoveOrHoverEvent(last, position, delta, _pointerIdentifier,
+      callback(_toMoveOrHoverEvent(next, position, delta, _pointerIdentifier,
           sampleTime, _isDown, _hasButtons));
       _position = position;
     }
