@@ -25,7 +25,8 @@ mixin OverlayMixin {
   late final curve = tween.chain(CurveTween(curve: Curves.ease));
   double get tweenValue => controller.drive(curve).value;
 
-  late AnimationController controller;
+  AnimationController get controller => _controller!;
+  AnimationController? _controller;
 
   double get value => controller.value;
   set value(double v) {
@@ -42,7 +43,9 @@ mixin OverlayMixin {
     _overlayState = overlayState;
     if (mounted) {
       _inited = true;
-      controller = AnimationController(vsync: overlayState, duration: duration);
+      _controller?.dispose();
+      _controller =
+          AnimationController(vsync: overlayState, duration: duration);
       controller.addStatusListener(listenStatus);
       onCreateOverlayEntry();
     }
@@ -85,11 +88,13 @@ mixin OverlayMixin {
   bool get hided => _hided;
 
   bool hide() {
-    if (!active || !(shouldHide() && mounted)) return false;
+    if (!active || !mounted) return false;
+    _hided = true;
+    if (!shouldHide()) return false;
+
     if (controller.isDismissed) {
       onDismissed();
-    } else if (controller.status != AnimationStatus.reverse && !hided) {
-      _hided = true;
+    } else if (controller.status != AnimationStatus.reverse) {
       controller.reverse();
     }
     return true;
@@ -106,7 +111,8 @@ mixin OverlayMixin {
     _closed = true;
     _complete();
     onRemoveOverlayEntry();
-    controller.dispose();
+    _controller?.dispose();
+    _controller = null;
   }
 
   @protected
@@ -121,13 +127,13 @@ mixin OverlayDelegate {
   Object get key;
   OverlayBase get overlayBase => Nav;
 
+  FutureOr<OverlayState> getOverlay() {
+    return overlayBase.getOverlay();
+  }
+
   void init() {
     EventQueue.runOne(
-        key,
-        () => waitOverlay(
-              initRun,
-              overlayGetter: overlayBase.getOverlay,
-            ));
+        key, () => waitOverlay(initRun, overlayGetter: getOverlay));
   }
 
   Future<void> get future;
@@ -158,7 +164,7 @@ class OverlayMixinDelegate with OverlayDelegate {
     if (delayDuration != Duration.zero) {
       await release(delayDuration);
     }
-    // 如果没有调用一次`show`,`hide`不会触发状态监听
+
     if (_cancel) {
       _controller.hide();
     } else {
@@ -185,6 +191,7 @@ class OverlayMixinDelegate with OverlayDelegate {
   }
 }
 
+/// deprecated
 class OverlayMixinMultiDelegate with OverlayDelegate {
   OverlayMixinMultiDelegate(List<OverlayMixin> controllers, this.duration,
       {this.delayDuration = Duration.zero})

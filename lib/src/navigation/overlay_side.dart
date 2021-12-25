@@ -81,10 +81,8 @@ mixin OverlaySide on OverlayMixin {
 
   @override
   void onCompleted() {
-    hided
-        ? hide()
-        : EventQueue.runOne(
-            _privateKey, () => release(stay).whenComplete(hide));
+    if (hided) return;
+    EventQueue.runOne(_privateKey, () => release(stay).whenComplete(hide));
   }
 
   @override
