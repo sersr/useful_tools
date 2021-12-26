@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
 
-import 'nav_overlay_mixin.dart';
 import 'overlay_side.dart';
 
-class BannerController with OverlayMixin, OverlaySide {
+class BannerController extends OverlaySideDefault {
   BannerController({
-    required this.stay,
-    required this.content,
+    required Duration stay,
+    required Widget content,
     BorderRadius? radius,
-    this.color,
-  }) : _radius = radius;
-  @override
-  final Duration stay;
-  @override
-  final Widget content;
-  @override
-  final Color? color;
-  
-  final BorderRadius? _radius;
-  @override
-  BorderRadius? get radius => _radius;
+    Color? color,
+    Curve? curve,
+    bool? closeOndismissed,
+  }) : super(
+          stay: stay,
+          content: content,
+          radius: radius,
+          color: color,
+          curve: curve,
+          closeOndismissed: closeOndismissed,
+        );
 
   @override
   double? get positionBottom => null;
@@ -32,19 +30,6 @@ class BannerController with OverlayMixin, OverlaySide {
   double? get positionTop => 8;
   @override
   Object get showKey => BannerController;
-
   @override
-  Widget buildChild(BuildContext context, {required Widget child}) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        return Align(
-          heightFactor: tweenValue,
-          alignment: Alignment.bottomCenter,
-          child: child,
-        );
-      },
-      child: super.buildChild(context, child: child),
-    );
-  }
+  Alignment? get alignment => Alignment.bottomCenter;
 }

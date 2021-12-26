@@ -1,39 +1,27 @@
 import 'package:flutter/material.dart';
 
-import 'nav_overlay_mixin.dart';
 import 'overlay_side.dart';
 
-class SnackBarController with OverlayMixin, OverlaySide {
+class SnackBarController extends OverlaySideDefault {
   SnackBarController({
-    required this.stay,
-    required this.content,
-    this.color,
-  });
-  @override
-  final Duration stay;
-  @override
-  final Widget content;
-  @override
-  final Color? color;
+    required Duration stay,
+    required Widget content,
+    BorderRadius? radius,
+    Color? color,
+    bool? closeOndismissed,
+  }) : super(
+          stay: stay,
+          content: content,
+          radius: radius,
+          color: color,
+          closeOndismissed: closeOndismissed,
+        );
 
   @override
   double? get positionTop => null;
 
   @override
   Object get showKey => SnackBarController;
-
   @override
-  Widget buildChild(BuildContext context, {required Widget child}) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        return Align(
-          heightFactor: tweenValue,
-          alignment: Alignment.topCenter,
-          child: child,
-        );
-      },
-      child: super.buildChild(context, child: child),
-    );
-  }
+  Alignment? get alignment => Alignment.topCenter;
 }

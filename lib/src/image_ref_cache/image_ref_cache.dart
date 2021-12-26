@@ -283,7 +283,9 @@ class ImageRefCache {
       }
 
       EventQueue.runTask(
-          this, () => _def(deferred, _imageTask, _autoDone),
+          this,
+          () => _def(deferred, _imageTask, _autoDone,
+              wait: () => scheduler.endOfFrame),
           channels: 4);
     });
   }
@@ -344,14 +346,16 @@ class ImageRefCache {
           final local = image?.clone();
           image?.dispose();
           _loadQueue.addEventTask(() async {
-            // await scheduler.endOfFrame;
+            await scheduler.endOfFrame;
             await setImage(local, error);
           });
         }
       }
 
       EventQueue.runTask(
-          this, () => _def(deferred, _imageTask, _autoDone));
+          this,
+          () => _def(deferred, _imageTask, _autoDone,
+              wait: () => scheduler.endOfFrame));
     });
   }
 

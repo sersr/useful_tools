@@ -19,20 +19,21 @@ mixin OverlayBase {
   FutureOr<OverlayState> get overlayState {
     _overlayState = overlay;
     if (_overlayState == null || !_overlayState!.mounted) {
-      return _future.andThen((value) {
-        if (value == null || !value.mounted) {
-          _future = null;
-          return _getDefault();
-        }
-        return _overlayState = value;
-      });
+      return _future.andMapOptionFut<OverlayState>(
+        ifNone: _getDefault,
+        ifSome: (state) {
+          if (state.mounted) return _overlayState = state;
+
+          return _future = _getDefault();
+        },
+      );
     }
 
     return _overlayState!;
   }
 
   FutureOr<OverlayState> _getDefault() {
-    return _future ??= EventQueue.runTask(_getDefault, _default);
+    return EventQueue.runTask(_getDefault, _default);
   }
 
   Future<OverlayState> _default() async {
@@ -53,7 +54,7 @@ Future<void> waitForFrame() {
       release(const Duration(milliseconds: 16));
 }
 
-typedef OverlayGetter = FutureOr<OverlayState> Function();
+typedef OverlayGetter = FutureOr<OverlayState?> Function();
 
 /// 在同一个代码块中读取值
 /// 确保初始化时，`overlaystate.mounted == true`
@@ -78,7 +79,7 @@ FutureOr<void> waitOverlay(FutureOr<void> Function(OverlayState) run,
   while (true) {
     try {
       final overlaystate = await overlayGetter();
-      if (overlaystate.mounted) {
+      if (overlaystate != null && overlaystate.mounted) {
         assert(() {
           timer?.cancel();
           return true;

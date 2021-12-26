@@ -503,11 +503,12 @@ class _RefreshWidgetState extends State<RefreshWidget>
             height: position.axis == Axis.vertical ? refresh.value : 0.0,
             width: position.axis == Axis.vertical ? 0.0 : refresh.value,
             child: builder(
-                context,
-                refresh.maxExtent - refresh._value,
-                refresh.maxExtent,
-                refresh.mode,
-                EventQueue.getQueueRunner(_RefreshWidgetState) != null),
+              context,
+              refresh.maxExtent - refresh._value,
+              refresh.maxExtent,
+              refresh.mode,
+              EventQueue.getQueueState(_RefreshWidgetState),
+            ),
           );
         });
   }

@@ -1,28 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:utils/utils.dart';
 
-import 'nav_overlay_mixin.dart';
 import 'overlay_side.dart';
 
-class ToastController with OverlayMixin, OverlaySide {
+class ToastController extends OverlaySideDefault {
   ToastController({
-    required this.content,
-    required this.stay,
+    required Duration stay,
+    required Widget content,
     double bottomPadding = 80,
-    this.color,
-    this.radius = const BorderRadius.all(Radius.circular(8)),
+    BorderRadius? radius,
     this.padding,
-  }) : positionBottom = bottomPadding;
-
-  @override
-  final Duration stay;
-  @override
-  final Widget content;
-
-  @override
-  final Color? color;
-  @override
-  final BorderRadius? radius;
+    Color? color,
+    Curve? curve,
+    bool? closeOndismissed,
+  })  : positionBottom = bottomPadding,
+        super(
+          stay: stay,
+          content: content,
+          radius: radius,
+          color: color,
+          curve: curve,
+          closeOndismissed: closeOndismissed,
+        );
 
   @override
   final double positionBottom;
@@ -59,32 +58,27 @@ class ToastController with OverlayMixin, OverlaySide {
   }
 
   final _ignore = ValueNotifier(true);
-  late final fadeAnimation = curve.animate(controller);
+  late final fadeAnimation = curveTween.animate(controller);
 
   @override
   Object get showKey => ToastController;
 
   @override
   Future<bool> showAsync() {
-    return EventQueue.runTask(showKey, () {
-      if (show()) {
-        if (_ignore.value) {
-          _ignore.value = false;
-        }
-        return future.then((_) => true);
-      }
-      return false;
-    });
+    return EventQueue.runTask(
+      showKey,
+      () => show().then((value) {
+        if (value) _ignore.value = false;
+        return future.then((_) => value);
+      }),
+    );
   }
 
   @override
   bool hide() {
-    if (super.hide()) {
-      if (!_ignore.value) {
-        _ignore.value = true;
-      }
-      return true;
-    }
-    return false;
+    final value = super.hide();
+    if (value) _ignore.value = true;
+
+    return value;
   }
 }

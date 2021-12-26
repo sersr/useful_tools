@@ -18,7 +18,6 @@ class _Resampler {
 
   Duration _frameTime = Duration.zero;
   Duration _lastFrameTime = Duration.zero;
-  Duration _llf = Duration.zero;
 
   final HandleEventCallback _handlePointerEvent;
 
@@ -57,7 +56,6 @@ class _Resampler {
       scheduler?.scheduleFrameCallback((_) {
         _frameCallbackScheduled = false;
 
-        _llf = _lastFrameTime;
         _lastFrameTime = _frameTime;
         _frameTime = scheduler.currentSystemFrameTimeStamp;
         _handleSampleTimeChanged();
@@ -77,7 +75,6 @@ class _Resampler {
     _resamplers.clear();
     _lastFrameTime = Duration.zero;
     _frameTime = Duration.zero;
-    _llf = Duration.zero;
   }
 }
 
