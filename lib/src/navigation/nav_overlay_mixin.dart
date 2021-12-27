@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:utils/utils.dart';
 
 import 'overlay_observer.dart';
 
@@ -28,6 +27,16 @@ mixin OverlayMixin {
   set value(double v) {
     controller.value = v.clamp(0.0, 1.0);
   }
+
+  bool get isAnimating => controller.isAnimating;
+  bool get isCompleted => controller.isCompleted;
+  bool get isDismissed => controller.isDismissed;
+
+  bool get showing =>
+      controller.status == AnimationStatus.forward && isAnimating;
+
+  bool get hiding =>
+      controller.status == AnimationStatus.reverse && isAnimating;
 
   bool get inited => _inited;
 
@@ -61,15 +70,15 @@ mixin OverlayMixin {
   }
 
   @protected
+  @mustCallSuper
   void onCompleted() {
-    _complete();
     onShowEnd?.call();
     _observer?.show(this);
   }
 
   @protected
+  @mustCallSuper
   void onDismissed() {
-    _complete();
     onHideEnd?.call();
     _observer?.hide(this);
   }
@@ -80,9 +89,8 @@ mixin OverlayMixin {
   OverlayObserver? _observer;
 
   void setObverser(OverlayObserver? observer) {
-    if (observer != null) {
-      observer.insert(this);
-    }
+    if (observer != null) observer.insert(this);
+
     _observer = observer;
   }
 
@@ -90,15 +98,10 @@ mixin OverlayMixin {
 
   FutureOr<bool> showAsync() => show();
   bool show() {
-    Log.w('status: ${controller.status}');
     if (!active || !mounted) return false;
     _hided = false;
-    if (controller.isCompleted) {
-      onCompleted();
-    } else if (controller.status != AnimationStatus.forward ||
-        !controller.isAnimating) {
-      controller.forward();
-    }
+    if (!showing) controller.forward();
+
     return true;
   }
 
@@ -113,10 +116,7 @@ mixin OverlayMixin {
     _hided = true;
     if (!shouldHide()) return false;
 
-    if (controller.isDismissed) {
-      onDismissed();
-    } else if (controller.status != AnimationStatus.reverse ||
-        !controller.isAnimating) {
+    if (!hiding) {
       controller.reverse();
     }
     return true;

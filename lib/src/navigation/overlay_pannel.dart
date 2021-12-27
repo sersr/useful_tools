@@ -1,13 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:utils/utils.dart';
 
 import 'nav_overlay_mixin.dart';
+import 'overlay_event.dart';
 
 typedef WidgetBuilder = Widget Function(BuildContext context);
 
-mixin OverlayPannel on OverlayMixin {
+mixin OverlayPannel on OverlayMixin, OverlayEvent {
   final _entries = <OverlayEntry>[];
 
   addEntry(OverlayEntry entry) {
@@ -33,49 +31,9 @@ mixin OverlayPannel on OverlayMixin {
     }
     _entries.clear();
   }
-
-  Completer<void>? _completer;
-
-  void _complete() {
-    if (_completer?.isCompleted == false) {
-      _completer?.complete();
-      _completer = null;
-    }
-  }
-
-  Future<void> get _future {
-    _completer ??= Completer();
-    return _completer!.future;
-  }
-
-  @override
-  void onCompleted() {
-    _complete();
-    super.onCompleted();
-  }
-
-  @override
-  void onDismissed() {
-    _complete();
-    super.onDismissed();
-  }
-
-  @override
-  FutureOr<bool> showAsync() {
-    return show().then((value) {
-      return _future.then((_) => value);
-    });
-  }
-
-  @override
-  FutureOr<bool> hideAsync() {
-    return hide().then((value) {
-      return _future.then((_) => value);
-    });
-  }
 }
 
-class OverlayVerticalPannels with OverlayMixin, OverlayPannel {
+class OverlayVerticalPannels with OverlayMixin, OverlayEvent, OverlayPannel {
   OverlayVerticalPannels({
     List<WidgetBuilder>? builders,
     this.onHideEnd,
@@ -90,8 +48,9 @@ class OverlayVerticalPannels with OverlayMixin, OverlayPannel {
   final VoidCallback? onShowEnd;
 }
 
-class OverlayPannelWidget extends StatefulWidget {
-  const OverlayPannelWidget({
+/// [CurvedAnimation]需要调用`dispose`释放资源
+class CurvedAnimationWidget extends StatefulWidget {
+  const CurvedAnimationWidget({
     Key? key,
     required this.controller,
     required this.builder,
@@ -106,10 +65,10 @@ class OverlayPannelWidget extends StatefulWidget {
   final Widget Function(BuildContext context, Animation<double> animation)
       builder;
   @override
-  _OverlayPannelWidgetState createState() => _OverlayPannelWidgetState();
+  _CurvedAnimationWidgetState createState() => _CurvedAnimationWidgetState();
 }
 
-class _OverlayPannelWidgetState extends State<OverlayPannelWidget> {
+class _CurvedAnimationWidgetState extends State<CurvedAnimationWidget> {
   @override
   void initState() {
     super.initState();
@@ -117,7 +76,13 @@ class _OverlayPannelWidgetState extends State<OverlayPannelWidget> {
   }
 
   @override
-  void didUpdateWidget(covariant OverlayPannelWidget oldWidget) {
+  void dispose() {
+    super.dispose();
+    curvedAnimation?.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant CurvedAnimationWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     update();
   }

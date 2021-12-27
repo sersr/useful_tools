@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:utils/utils.dart';
 
 import 'nav_overlay_mixin.dart';
+import 'overlay_event.dart';
 
 // single side
-mixin OverlayMixinSide on OverlayMixin {
+mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
   Duration get stay;
   final _privateKey = GlobalKey();
   GlobalKey get privateKey => _privateKey;
@@ -34,12 +35,23 @@ mixin OverlayMixinSide on OverlayMixin {
     _user = true;
   }
 
-  void _userleave([_]) {
+  void _userleave([DragEndDetails? details]) {
     if (closed) return;
     _userMode = false;
     _user = value != 1.0;
 
-    if (hided || value < 0.5) {
+    var vHide = false;
+    final velocity = details?.primaryVelocity;
+
+    if (velocity != null) {
+      if (isTop || isLeft) {
+        vHide = velocity < -100;
+      } else if (isBottom || isRight) {
+        vHide = velocity > 100;
+      }
+    }
+
+    if (hided || value < 0.5 || vHide) {
       hide();
     } else {
       show();
@@ -95,6 +107,7 @@ mixin OverlayMixinSide on OverlayMixin {
 
   @override
   void onCompleted() {
+    super.onCompleted();
     EventQueue.runOne(_privateKey, () => release(stay).whenComplete(hide));
   }
 
@@ -102,6 +115,7 @@ mixin OverlayMixinSide on OverlayMixin {
 
   @override
   void onDismissed() {
+    super.onDismissed();
     if (closeOndismissed) {
       close();
     }
@@ -111,12 +125,13 @@ mixin OverlayMixinSide on OverlayMixin {
 
   @override
   FutureOr<bool> showAsync() {
-    if (showKey == null) {
-      return show().then((value) => future.then((_) => value));
+    FutureOr<bool> inner() {
+      return super.showAsync().then((value) => future.then((_) => value));
     }
-    return EventQueue.runTask(showKey, () {
-      return show().then((value) => future.then((_) => value));
-    });
+
+    if (showKey == null) return inner();
+
+    return EventQueue.runTask(showKey, inner);
   }
 
   @override
@@ -243,7 +258,8 @@ mixin OverlayMixinSide on OverlayMixin {
   }
 }
 
-abstract class OverlaySideDefault with OverlayMixin, OverlayMixinSide {
+abstract class OverlaySideDefault
+    with OverlayMixin, OverlayEvent, OverlayMixinSide {
   OverlaySideDefault({
     required this.stay,
     required this.content,

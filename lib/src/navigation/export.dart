@@ -10,3 +10,4 @@ export 'overlay_observer.dart';
 export 'overlay_pannel.dart';
 export 'overlay_side.dart';
 export 'slide_page_transition.dart';
+export 'overlay_event.dart';

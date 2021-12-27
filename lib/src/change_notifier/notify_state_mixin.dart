@@ -18,9 +18,13 @@ mixin NotifyStateOnChangeNotifier on ChangeNotifier {
   NotifyStateMixin? _handle;
   set handle(NotifyStateMixin? newHandle) {
     if (_handle != newHandle) {
-      _handle?._removeListener(_listen);
+      if (_added) {
+        _handle?._removeListener(_listen);
+        _added = false;
+      }
       _handle = newHandle;
-      if (_handle != null) {
+      if (_handle != null && hasListeners) {
+        _added = true;
         _handle?._addListener(_listen);
       }
     }
@@ -33,6 +37,25 @@ mixin NotifyStateOnChangeNotifier on ChangeNotifier {
       onOpen();
     } else {
       onClose();
+    }
+  }
+
+  bool _added = false;
+  @override
+  void addListener(VoidCallback listener) {
+    super.addListener(listener);
+    if (!_added && hasListeners) {
+      _added = true;
+      _handle?._addListener(_listen);
+    }
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
+    if (!hasListeners && _added) {
+      _added = false;
+      _handle?._removeListener(_listen);
     }
   }
 
