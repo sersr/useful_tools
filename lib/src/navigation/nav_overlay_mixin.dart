@@ -38,6 +38,10 @@ mixin OverlayMixin {
   bool get hiding =>
       controller.status == AnimationStatus.reverse && isAnimating;
 
+  bool get showStatus =>
+      controller.status == AnimationStatus.completed ||
+      controller.status == AnimationStatus.forward;
+
   bool get inited => _inited;
 
   bool _inited = false;

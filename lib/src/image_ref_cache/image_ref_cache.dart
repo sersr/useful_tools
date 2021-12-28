@@ -352,7 +352,7 @@ class ImageRefCache {
         }
       }
 
-      EventQueue.runTask(
+      EventQueue.push(
           this,
           () => _def(deferred, _imageTask, _autoDone,
               wait: () => scheduler.endOfFrame));
