@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:utils/utils.dart';
@@ -41,6 +42,93 @@ class TextCache {
       assert(!textRef._disposed);
       return TextInfo.text(textRef);
     }
+  }
+
+  static Future<List<TextPainter>> textPainter({
+    required String text,
+    required double width,
+    required TextDirection dir,
+    required TextStyle style,
+    required int maxLines,
+    required String ellipsis,
+  }) async {
+    final lines = split(text);
+    final fontSize = style.fontSize!;
+    final words = width ~/ fontSize;
+    final _oneHalf = fontSize * 1.6;
+
+    final linesText = <TextPainter>[];
+
+    final _t = TextPainter(textDirection: dir);
+
+    final _offset = Offset(width, 0.1);
+
+    var count = 0;
+
+    for (var i = 0; i < lines.length; i++) {
+      final pc = lines[i].characters;
+      var start = 0;
+      while (start < pc.length) {
+        if (count >= maxLines) break;
+        count++;
+        final atEnd = count == maxLines;
+
+        var end = math.min(start + words, pc.length);
+        await releaseUI;
+
+        // 确定每一行的字数
+        while (true) {
+          if (end >= pc.length) break;
+
+          end++;
+          final s = pc.getRange(start, end).toString();
+          _t
+            ..text = TextSpan(text: s, style: style)
+            ..layout(maxWidth: width);
+
+          await releaseUI;
+
+          if (_t.height > _oneHalf) {
+            var endOffset = _t.getPositionForOffset(_offset).offset;
+            if (atEnd) {
+              endOffset = math.min(s.length, endOffset + 3);
+            }
+            final _s = s.substring(0, endOffset).characters;
+            assert(() {
+              if (endOffset != _s.length) {
+                // Unicode 字符占用的字节数不相等
+                // 避免多字节字符导致 [subString] 出错
+                Log.i('no: $_s |$start, ${pc.length}');
+              }
+              return true;
+            }());
+            end = start + _s.length;
+            break;
+          }
+        }
+
+        await releaseUI;
+        final _s = pc.getRange(start, end).toString();
+
+        TextPainter text;
+        if (atEnd) {
+          text = TextPainter(
+            text: TextSpan(text: _s, style: style),
+            maxLines: 1,
+            ellipsis: ellipsis,
+            textDirection: dir,
+          )..layout(maxWidth: width);
+        } else {
+          text = TextPainter(
+              text: TextSpan(text: _s, style: style), textDirection: dir)
+            ..layout(maxWidth: width);
+        }
+
+        start = end;
+        linesText.add(text);
+      }
+    }
+    return linesText;
   }
 
   TextStream putIfAbsent(List keys, TextLayoutCallback callback) {
