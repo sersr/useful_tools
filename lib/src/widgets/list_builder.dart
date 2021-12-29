@@ -213,7 +213,7 @@ class MyScrollPhysics extends ScrollPhysics {
   @override
   bool recommendDeferredLoading(
       double velocity, ScrollMetrics metrics, BuildContext context) {
-    return velocity.abs() > 300;
+    return velocity.abs() > 100;
   }
 
   @override

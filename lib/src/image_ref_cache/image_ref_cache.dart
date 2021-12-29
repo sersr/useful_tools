@@ -175,7 +175,7 @@ class ImageRefCache {
     }
 
     var _done = false;
-    callback(_defLoad, (ui.Image? image, bool error) async {
+    callback(_defLoad, (ui.Image? image, bool error) {
       if (_done) Log.e('done : setImage', onlyDebug: false);
       _done = true;
 
@@ -192,14 +192,10 @@ class ImageRefCache {
   }
 
   Future<T?> _def<T>(LoadStatus Function() defLoad,
-      FutureOr<T> Function() callback, VoidCallback dispose,
-      {Future<void> Function()? wait}) async {
+      FutureOr<T> Function() callback, VoidCallback dispose) async {
     assert(EventQueue.currentTask != null);
-    if (wait != null) {
-      await wait();
-    } else {
-      await releaseUI;
-    }
+
+    await scheduler.endOfFrame;
     final _load = defLoad();
     switch (_load) {
       case LoadStatus.defLoad:
@@ -240,7 +236,7 @@ class ImageRefCache {
                   setImage(null, true);
                 }
                 return _path;
-              }, _autoDone, wait: () => scheduler.endOfFrame),
+              }, _autoDone),
           channels: 6);
       if (path == null) {
         assert(_done);
@@ -276,16 +272,13 @@ class ImageRefCache {
           final local = image?.clone();
           image?.dispose();
           _loadQueue.addEventTask(() async {
+            setImage(local, error);
             await scheduler.endOfFrame;
-            await setImage(local, error);
           });
         }
       }
 
-      EventQueue.runTask(
-          this,
-          () => _def(deferred, _imageTask, _autoDone,
-              wait: () => scheduler.endOfFrame),
+      EventQueue.runTask(this, () => _def(deferred, _imageTask, _autoDone),
           channels: 4);
     });
   }
@@ -313,11 +306,12 @@ class ImageRefCache {
                 final bytes = await getPath();
                 // 手动处理失败的情况
                 if (bytes == null) {
+                  await scheduler.endOfFrame;
                   _done = true;
                   setImage(null, true);
                 }
                 return bytes;
-              }, _autoDone, wait: () => scheduler.endOfFrame),
+              }, _autoDone),
           channels: 6);
 
       if (bytes == null) {
@@ -346,16 +340,13 @@ class ImageRefCache {
           final local = image?.clone();
           image?.dispose();
           _loadQueue.addEventTask(() async {
+            setImage(local, error);
             await scheduler.endOfFrame;
-            await setImage(local, error);
           });
         }
       }
 
-      EventQueue.push(
-          this,
-          () => _def(deferred, _imageTask, _autoDone,
-              wait: () => scheduler.endOfFrame));
+      EventQueue.push(this, () => _def(deferred, _imageTask, _autoDone));
     });
   }
 
@@ -380,7 +371,7 @@ class ImageRefCache {
   }
 }
 
-typedef SetImage = Future<void> Function(ui.Image? image, bool error);
+typedef SetImage = void Function(ui.Image? image, bool error);
 typedef _PreBuilder = Future<void> Function(LoadStatus Function(), SetImage);
 typedef PathFuture = FutureOr<String?> Function(String url);
 typedef Unit8ListFuture = FutureOr<Uint8List?> Function();
