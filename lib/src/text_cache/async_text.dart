@@ -70,25 +70,66 @@ class AsyncTextRenderBox extends RenderBox {
     size = constraints.constrain(_textPainter.size);
   }
 
-  /// 由于异步导致的重绘，会影响整个 [PictureLayer]
-  /// 减少不必要的消耗，只需要重绘自身就好了
-  // @override
-  // bool get isRepaintBoundary => !_needLayout;
-
   @override
   void paint(PaintingContext context, Offset offset) {
     _textPainter.paint(context.canvas, offset);
   }
 }
 
-class TextP {
-  TextP(this.painter);
+typedef AsyncTextBuilder = AsyncBuilder<List<List<TextPainter>?>>;
 
-  final TextPainter painter;
-  Timer? _timer;
+class AsyncBuilder<T> extends StatefulWidget {
+  const AsyncBuilder({
+    Key? key,
+    required this.builder,
+    required this.layout,
+    this.palceholder,
+  }) : super(key: key);
 
-  void start(Duration duration, VoidCallback onRemove) {
-    _timer?.cancel();
-    _timer = Timer(duration, onRemove);
+  final Future<T> Function(BuildContext context, bool Function() mounted)
+      layout;
+  final Widget Function(BuildContext context, T data) builder;
+  final Widget? palceholder;
+
+  @override
+  _AsyncBuilderState<T> createState() => _AsyncBuilderState<T>();
+}
+
+class _AsyncBuilderState<T> extends State<AsyncBuilder<T>> {
+  @override
+  void didUpdateWidget(covariant AsyncBuilder<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _layoutText();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _layoutText();
+  }
+
+  var _layoutKey = Object();
+  T? data;
+  void _layoutText() async {
+    final key = _layoutKey = Object();
+    final newData = await widget.layout(context, getMouted);
+    if (key == _layoutKey && mounted) {
+      setState(() {
+        data = newData;
+      });
+    }
+  }
+
+  bool getMouted() {
+    return mounted;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final localData = data;
+    if (localData != null) {
+      return widget.builder(context, localData);
+    }
+    return widget.palceholder ?? const SizedBox();
   }
 }
