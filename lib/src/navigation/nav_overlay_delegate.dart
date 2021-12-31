@@ -35,11 +35,8 @@ mixin OverlayDelegate {
   Future<void> get future;
   bool get active;
   bool get done;
-  bool get hided;
   bool get closed;
   bool get isAnimating;
-  bool get showing;
-  bool get hiding;
   bool get showStatus;
   @protected
   FutureOr<void> initRun(OverlayState overlayState) {}
@@ -70,16 +67,12 @@ class OverlayMixinDelegate with OverlayDelegate {
   bool get active => _controller.active;
   @override
   bool get done => _controller.inited;
-  @override
-  bool get hided => _controller.hided;
+
   @override
   bool get closed => _controller.closed;
   @override
   bool get isAnimating => done && _controller.isAnimating;
-  @override
-  bool get showing => done && _controller.showing;
-  @override
-  bool get hiding => done && _controller.hiding;
+
   @override
   bool get showStatus => done && _controller.showStatus;
 
@@ -122,13 +115,13 @@ class OverlayMixinDelegate with OverlayDelegate {
 
   @override
   void showToggle() {
-    if (showing) return;
+    if (showStatus) return;
     show();
   }
 
   @override
   void hideToggle() {
-    if (hiding) return;
+    if (!showStatus) return;
     hide();
   }
 

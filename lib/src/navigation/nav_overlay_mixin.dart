@@ -104,7 +104,7 @@ mixin OverlayMixin {
   bool show() {
     if (!active || !mounted) return false;
     _hided = false;
-    if (!showing) controller.forward();
+    if (!showStatus) controller.forward();
 
     return true;
   }
@@ -120,9 +120,8 @@ mixin OverlayMixin {
     _hided = true;
     if (!shouldHide()) return false;
 
-    if (!hiding) {
-      controller.reverse();
-    }
+    if (showStatus) controller.reverse();
+
     return true;
   }
 
