@@ -73,11 +73,11 @@ class ImageRefStream {
     if (image != null) {
       return image.width * image.height * 4;
     }
+    return null;
   }
 
   final void Function(ImageRefStream stream)? onRemove;
 
-  /// 理论上监听者数量不会太多
   bool get defLoad => _list.any((element) {
         final def = element.load;
         return def != null && def();

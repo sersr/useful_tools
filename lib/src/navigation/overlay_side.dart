@@ -93,6 +93,7 @@ mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
     } catch (e) {
       Log.i(e);
     }
+    return null;
   }
 
   @override

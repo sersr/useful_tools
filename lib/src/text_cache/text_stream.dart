@@ -42,6 +42,7 @@ class TextCache {
       assert(!textRef._disposed);
       return TextInfo.text(textRef);
     }
+    return null;
   }
 
   static Future<R> runTextPainter<R>(Future<R> Function() task) {
@@ -74,6 +75,20 @@ class TextCache {
 
   static bool printTryCount = false;
 
+  /// 文本异步布局实现
+  ///
+  /// [TextPainter]只能在Main Isolate中使用
+  /// 对于长文本来说,调用`layout`会占用很大的资源,对于低端手机会出现`jank`情况
+  /// 在[ListView]中问题更为显著
+  ///
+  /// 使用`characters`包,正确的裁剪文本
+  ///
+  /// 裁剪尽可能短的文本进行`layout`,根据布局的信息就可以得到一行的长度,
+  /// 每一次的`layout`之后,会回到事件循环中,由`engine`调度,
+  /// 因为UI的优先级高于[Timer]
+  ///
+  /// 而vsync之间是有可能有间隙的,一般GC会在后面调用
+  /// 这些时间dart事件机制会充分使用
   static Future<List<TextPainter>> textPainter({
     required String text,
     required double width,
@@ -113,7 +128,6 @@ class TextCache {
         var tryCount = 0;
         // 确定每一行的字数
         while (true) {
-          if (end >= paraLength) break;
           assert(tryCount++ == 0 ||
               !printTryCount ||
               Log.i('tryCount: $tryCount'));
@@ -140,6 +154,9 @@ class TextCache {
             end = start + realLines.length;
             break;
           }
+
+          /// 经过一次布局之后,确定不会超过一行
+          if (end >= paraLength) break;
         }
 
         await releaseUI;

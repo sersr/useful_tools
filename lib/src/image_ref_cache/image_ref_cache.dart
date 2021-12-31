@@ -209,6 +209,7 @@ class ImageRefCache {
       default:
         dispose();
     }
+    return null;
   }
 
   /// 把网络任务添加进延迟加载验证
