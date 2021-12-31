@@ -44,6 +44,10 @@ class TextCache {
     }
   }
 
+  static Future<R> runTextPainter<R>(Future<R> Function() task) {
+    return EventQueue.runTask(textPainter, task);
+  }
+
   static Future<List<TextPainter>> oneTextPainter({
     required String text,
     required double width,
