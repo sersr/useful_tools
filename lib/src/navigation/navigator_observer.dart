@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'overlay.dart';
+import '../overlay/export.dart';
 
 class NavObserver extends NavigatorObserver {
   OverlayState? get overlay => navigator?.overlay;

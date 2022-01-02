@@ -6,23 +6,21 @@ import 'package:utils/utils.dart';
 import 'nav_overlay_mixin.dart';
 import 'overlay_event.dart';
 
-// single side
-mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
-  Duration get stay;
+mixin OverlaySideBase on OverlayMixin, OverlayEvent {
+  Duration? get stay;
+
+  /// 获取size
   final _privateKey = GlobalKey();
   GlobalKey get privateKey => _privateKey;
-
+  
   OverlayEntry? _entry;
   OverlayEntry get entry => _entry!;
-  Widget get content;
 
   bool _user = false;
   bool _userMode = false;
 
   bool get canHide => hided;
 
-  Color? get color => null;
-  BorderRadius? get radius => null;
   double? get positionLeft => 0;
   double? get positionRight => 0;
   double? get positionTop => 0;
@@ -64,10 +62,17 @@ mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
       try {
         final localSize = size;
         final offset = d.primaryDelta;
-        if (localSize != null && offset != null) {
-          // assert(Log.w('....$hided $localSize $value'));
 
-          final delta = offset / localSize.height;
+        double? extent;
+        if (isVertical) {
+          extent = localSize?.height;
+        } else if (isHorizontal) {
+          extent = localSize?.width;
+        }
+
+        if (extent != null && offset != null) {
+          // assert(Log.w('....$hided $localSize $value'));
+          final delta = offset / extent;
           onUserUpdate(delta);
           if (closed) return;
         }
@@ -109,7 +114,10 @@ mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
   @override
   void onCompleted() {
     super.onCompleted();
-    EventQueue.runOne(_privateKey, () => release(stay).whenComplete(hide));
+    final hold = stay;
+    if (hold != null) {
+      EventQueue.runOne(_privateKey, () => release(hold).whenComplete(hide));
+    }
   }
 
   bool get closeOndismissed => true;
@@ -122,7 +130,7 @@ mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
     }
   }
 
-  Object? get showKey => OverlayMixinSide;
+  Object? get showKey => OverlaySideBase;
 
   @override
   FutureOr<bool> showAsync() {
@@ -148,8 +156,68 @@ mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
     }
   }
 
-  @mustCallSuper
-  Widget buildChild(BuildContext context, {required Widget child}) {
+  bool get topNull => positionTop == null;
+  bool get leftNull => positionLeft == null;
+  bool get rightNull => positionRight == null;
+  bool get bottomNull => positionBottom == null;
+  bool get isTop => bottomNull && !topNull && !leftNull && !rightNull;
+  bool get isLeft => rightNull && !topNull && !leftNull && !bottomNull;
+  bool get isBottom => topNull && !leftNull && !rightNull && !bottomNull;
+  bool get isRight => leftNull && !topNull && !rightNull && !bottomNull;
+  bool get isHorizontal => isLeft || isRight;
+  bool get isVertical => isTop || isBottom;
+
+  Widget build(BuildContext context) {
+    // context 发生改变
+    Widget child = Builder(
+      builder: (context) {
+        return buildChild(context);
+      },
+    );
+    child = transitionBuild(child);
+
+    if (onTap != null) {
+      child = GestureDetector(onTap: onTap, child: child);
+    } else {
+      child = GestureDetector(
+        onHorizontalDragDown: isHorizontal ? _userEnter : null,
+        onHorizontalDragStart: isHorizontal ? _userEnter : null,
+        onHorizontalDragUpdate: isHorizontal ? _userUpdate : null,
+        onHorizontalDragEnd: isHorizontal ? _userleave : null,
+        onHorizontalDragCancel: isHorizontal ? _userleave : null,
+        onVerticalDragDown: isVertical ? _userEnter : null,
+        onVerticalDragStart: isVertical ? _userEnter : null,
+        onVerticalDragUpdate: isVertical ? _userUpdate : null,
+        onVerticalDragEnd: isVertical ? _userleave : null,
+        onVerticalDragCancel: isVertical ? _userleave : null,
+        child: child,
+      );
+    }
+    return Positioned(
+        top: isTop ? null : positionTop,
+        left: positionLeft,
+        right: positionRight,
+        bottom: positionBottom,
+        child: SafeArea(top: false, child: child));
+  }
+
+  Widget buildChild(BuildContext context);
+
+  Widget transitionBuild(Widget child) {
+    return child;
+  }
+}
+
+// single side
+mixin OverlayMixinSide on OverlayMixin, OverlayEvent, OverlaySideBase {
+  Widget get content;
+  bool get useMaterial => true;
+
+  Color? get color => null;
+  BorderRadius? get radius => null;
+
+  @override
+  Widget buildChild(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
@@ -172,6 +240,24 @@ mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
     } else if (isHorizontal) {
       innerPadding = EdgeInsets.only(top: padding.top, bottom: padding.bottom);
     }
+
+    Widget body = Container(
+      padding: isTop ? null : innerPadding,
+      child: DefaultTextStyle(
+        style: TextStyle(
+            color: isDark
+                ? const Color.fromARGB(255, 44, 44, 44)
+                : const Color.fromARGB(255, 221, 221, 221)),
+        child: content,
+      ),
+    );
+    if (useMaterial) {
+      body = Material(
+        color: color ?? themeColor,
+        borderRadius: radius,
+        child: body,
+      );
+    }
     return MediaQuery.removePadding(
       context: context,
       removeBottom: remove,
@@ -179,92 +265,20 @@ mixin OverlayMixinSide on OverlayMixin, OverlayEvent {
       removeRight: remove,
       removeTop: remove,
       child: Container(
-        key: _privateKey,
+        key: privateKey,
         padding: isTop ? innerPadding : null,
-        child: Material(
-          color: color ?? themeColor,
-          borderRadius: radius,
-          child: Container(
-            padding: isTop ? null : innerPadding,
-            child: DefaultTextStyle(
-              style: TextStyle(
-                  color: isDark
-                      ? const Color.fromARGB(255, 44, 44, 44)
-                      : const Color.fromARGB(255, 221, 221, 221)),
-              child: SizedBox(width: double.infinity, child: child),
-            ),
-          ),
-        ),
+        child: body,
       ),
-    );
-  }
-
-  bool get topNull => positionTop == null;
-  bool get leftNull => positionLeft == null;
-  bool get rightNull => positionRight == null;
-  bool get bottomNull => positionBottom == null;
-  bool get isTop => bottomNull && !topNull && !leftNull && !rightNull;
-  bool get isLeft => rightNull && !topNull && !leftNull && !bottomNull;
-  bool get isBottom => topNull && !leftNull && !rightNull && !bottomNull;
-  bool get isRight => leftNull && !topNull && !rightNull && !bottomNull;
-  bool get isHorizontal => isLeft || isRight;
-  bool get isVertical => isTop || isBottom;
-
-  Widget build(BuildContext context) {
-    Widget child = RepaintBoundary(
-      child: Builder(
-        builder: (context) {
-          return buildChild(context, child: content);
-        },
-      ),
-    );
-    if (onTap != null) {
-      child = GestureDetector(onTap: onTap, child: child);
-    } else {
-      child = GestureDetector(
-        onHorizontalDragDown: isHorizontal ? _userEnter : null,
-        onHorizontalDragStart: isHorizontal ? _userEnter : null,
-        onHorizontalDragUpdate: isHorizontal ? _userUpdate : null,
-        onHorizontalDragEnd: isHorizontal ? _userleave : null,
-        onHorizontalDragCancel: isHorizontal ? _userleave : null,
-        onVerticalDragDown: isVertical ? _userEnter : null,
-        onVerticalDragStart: isVertical ? _userEnter : null,
-        onVerticalDragUpdate: isVertical ? _userUpdate : null,
-        onVerticalDragEnd: isVertical ? _userleave : null,
-        onVerticalDragCancel: isVertical ? _userleave : null,
-        child: child,
-      );
-    }
-    return Positioned(
-      top: isTop ? null : positionTop,
-      left: positionLeft,
-      right: positionRight,
-      bottom: positionBottom,
-      child: Builder(builder: (context) {
-        var padding = MediaQuery.of(context).padding;
-
-        var margin = EdgeInsets.zero;
-
-        if (isTop) {
-        } else if (isBottom) {
-          margin = EdgeInsets.only(bottom: padding.bottom);
-        } else if (isLeft) {
-          margin = EdgeInsets.only(left: padding.left);
-        } else if (isRight) {
-          margin = EdgeInsets.only(right: padding.right);
-        }
-        return Container(padding: margin, child: child);
-      }),
     );
   }
 }
 
 abstract class OverlaySideDefault
-    with OverlayMixin, OverlayEvent, OverlayMixinSide {
+    with OverlayMixin, OverlayEvent, OverlaySideBase, OverlayMixinSide {
   OverlaySideDefault({
-    required this.stay,
     required this.content,
     BorderRadius? radius,
+    this.stay,
     this.color,
     Curve? curve,
     bool? closeOndismissed,
@@ -273,7 +287,7 @@ abstract class OverlaySideDefault
         _radius = radius;
 
   @override
-  final Duration stay;
+  final Duration? stay;
   @override
   final Widget content;
   @override
@@ -294,11 +308,16 @@ abstract class OverlaySideDefault
   Alignment? get alignment => null;
 
   @override
-  Widget buildChild(BuildContext context, {required Widget child}) {
-    child = super.buildChild(context, child: child);
+  Widget transitionBuild(Widget child) {
     if (onTap != null) {
       return child;
     }
+    if (isHorizontal) {
+      child = IntrinsicWidth(child: child);
+    } else if (isVertical) {
+      child = IntrinsicHeight(child: child);
+    }
+
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) {

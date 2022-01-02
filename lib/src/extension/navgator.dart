@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../navigation/export.dart';
+import '../overlay/export.dart';
 
 typedef SnackbarDelegate = OverlayMixinDelegate;
 typedef BannerDelegate = OverlayMixinDelegate;
@@ -67,7 +67,7 @@ extension SnackBarExt on OverlayBase {
 }
 
 Future<void> showOverlay(OverlayDelegate overlay) {
-  overlay.init();
+  overlay.show();
   return overlay.future;
 }
 

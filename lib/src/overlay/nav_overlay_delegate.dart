@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:utils/utils.dart';
 
+import '../navigation/export.dart';
 import 'nav_overlay_mixin.dart';
-import 'navigator_observer.dart';
 import 'overlay.dart';
 import 'overlay_observer.dart';
 

@@ -16,7 +16,7 @@ class ToastController extends OverlaySideDefault {
   })  : positionBottom = bottomPadding,
         super(
           stay: stay,
-          content: content,
+          content: Container(padding: padding, child: content),
           radius: radius,
           color: color,
           curve: curve,
@@ -35,7 +35,7 @@ class ToastController extends OverlaySideDefault {
   void _onTap() => hide();
 
   @override
-  Widget buildChild(BuildContext context, {required Widget child}) {
+  Widget buildChild(BuildContext context) {
     return AnimatedBuilder(
       animation: _ignore,
       builder: (context, child) {
@@ -46,10 +46,7 @@ class ToastController extends OverlaySideDefault {
           child: FadeTransition(
             opacity: fadeAnimation,
             child: RepaintBoundary(
-              child: super.buildChild(
-                context,
-                child: Container(padding: padding, child: child),
-              ),
+              child: super.buildChild(context),
             ),
           ),
         ),

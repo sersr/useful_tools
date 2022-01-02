@@ -12,7 +12,7 @@ class BannerController extends OverlaySideDefault {
     bool? closeOndismissed,
   }) : super(
           stay: stay,
-          content: content,
+          content: SizedBox(width: double.infinity, child: content),
           radius: radius,
           color: color,
           curve: curve,

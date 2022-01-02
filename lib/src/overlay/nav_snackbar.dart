@@ -8,12 +8,14 @@ class SnackBarController extends OverlaySideDefault {
     required Widget content,
     BorderRadius? radius,
     Color? color,
+    Curve? curve,
     bool? closeOndismissed,
   }) : super(
           stay: stay,
           content: content,
           radius: radius,
           color: color,
+          curve: curve,
           closeOndismissed: closeOndismissed,
         );
 

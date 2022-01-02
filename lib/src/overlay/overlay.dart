@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:utils/utils.dart';
 
-import 'navigator_observer.dart';
+import '../navigation/export.dart';
 
 mixin OverlayBase {
   OverlayState? get overlay;
