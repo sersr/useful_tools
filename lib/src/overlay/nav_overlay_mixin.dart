@@ -118,14 +118,14 @@ mixin OverlayMixin {
   bool hide() {
     if (!active || !mounted) return false;
     _hided = true;
-    if (!shouldHide()) return false;
+    if (!shouldHide) return false;
 
     controller.reverse();
 
     return true;
   }
 
-  bool shouldHide() => true;
+  bool shouldHide = true;
 
   bool _closed = false;
   bool get closed => _closed;
@@ -142,7 +142,9 @@ mixin OverlayMixin {
   }
 
   @protected
+  @mustCallSuper
   void onCreateOverlayEntry() {}
   @protected
+  @mustCallSuper
   void onRemoveOverlayEntry() {}
 }

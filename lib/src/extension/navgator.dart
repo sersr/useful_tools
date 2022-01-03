@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../navigation/export.dart';
 import '../overlay/export.dart';
 
 typedef SnackbarDelegate = OverlayMixinDelegate;
 typedef BannerDelegate = OverlayMixinDelegate;
 typedef ToastDelegate = OverlayMixinDelegate;
 
-extension SnackBarExt on OverlayBase {
+late final _snackBarToken = Object();
+late final _bannelToken = Object();
+late final _toastToken = Object();
+
+extension OverlayExt on NavInterface {
   SnackbarDelegate snackBar(
     Widget content, {
     Duration duration = const Duration(seconds: 3),
@@ -15,13 +20,15 @@ extension SnackBarExt on OverlayBase {
     bool? closeOndismissed,
     Color? color,
   }) =>
-      _syncSnackBar(
+      showOverlay(
         content,
+        showKey: _snackBarToken,
         duration: duration,
         animationDuration: animationDuration,
         delayDuration: delayDuration,
         color: color,
         closeOndismissed: closeOndismissed,
+        position: Position.bottom,
       );
 
   BannerDelegate banner(
@@ -32,17 +39,21 @@ extension SnackBarExt on OverlayBase {
     Color? color,
     BorderRadius? radius = const BorderRadius.all(Radius.circular(8)),
   }) {
-    return _syncBanner(
+    return showOverlay(
       content,
+      top: 0,
+      right: 8,
+      left: 8,
+      margin: const EdgeInsets.only(top: 8),
+      showKey: _bannelToken,
       duration: duration,
       animationDuration: animationDuration,
       delayDuration: delayDuration,
       radius: radius,
       color: color,
+      position: Position.top,
     );
   }
-
-  Future<void> showSnackBar(SnackbarDelegate snackbar) => showOverlay(snackbar);
 
   ToastDelegate toast(
     Widget content, {
@@ -54,88 +65,159 @@ extension SnackBarExt on OverlayBase {
     EdgeInsets? padding,
     bool? closeOndismissed,
   }) {
-    return _syncToast(
-      content,
+    return showOverlay(
+      Container(padding: padding, child: content),
       duration: duration,
+      showKey: _toastToken,
       radius: radius,
       color: color,
-      bottomPadding: bottomPadding,
-      padding: padding,
-      closeOndismissed: closeOndismissed,
+      top: null,
+      bottom: bottomPadding,
+      onTap: (owner) {
+        owner.hide();
+      },
+      closeOndismissed: true,
+      transition: (child, self) {
+        final owner = self.owner;
+        return AnimatedBuilder(
+          animation: owner.ignore,
+          builder: (context, child) {
+            return IgnorePointer(ignoring: owner.ignore.value, child: child);
+          },
+          child: Center(
+            child: IntrinsicWidth(
+              child: FadeTransition(
+                opacity: owner.controller,
+                child: RepaintBoundary(
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-Future<void> showOverlay(OverlayDelegate overlay) {
-  overlay.show();
-  return overlay.future;
+Tween<Offset>? _getOffsetFrom(Position position) {
+  Tween<Offset>? offset;
+  switch (position) {
+    case Position.top:
+      offset =
+          Tween(begin: const Offset(0.0, -1.0), end: const Offset(0.0, 0.0));
+      break;
+    case Position.left:
+      offset =
+          Tween(begin: const Offset(-1.0, 0.0), end: const Offset(0.0, 0.0));
+      break;
+    case Position.bottom:
+      offset =
+          Tween(begin: const Offset(0.0, 1.0), end: const Offset(0.0, 0.0));
+      break;
+    case Position.right:
+      offset =
+          Tween(begin: const Offset(1.0, 0.0), end: const Offset(0.0, 0.0));
+      break;
+    default:
+  }
+  return offset;
 }
 
-SnackbarDelegate _syncSnackBar(
+OverlayMixinDelegate showOverlay(
   Widget content, {
   Duration duration = const Duration(seconds: 3),
-  Duration animationDuration = const Duration(milliseconds: 400),
+  Duration animationDuration = const Duration(milliseconds: 300),
   Duration delayDuration = Duration.zero,
-  Color? color,
   bool? closeOndismissed,
-}) {
-  final controller = SnackBarController(
-    stay: duration,
-    content: content,
-    color: color,
-    closeOndismissed: closeOndismissed,
-  );
-  return SnackbarDelegate(
-    controller,
-    animationDuration,
-    delayDuration: delayDuration,
-  )..show();
-}
-
-BannerDelegate _syncBanner(
-  Widget content, {
-  Duration duration = const Duration(seconds: 3),
-  Duration animationDuration = const Duration(milliseconds: 400),
-  Duration delayDuration = Duration.zero,
+  Color? color,
   BorderRadius? radius,
-  Color? color,
-  bool? closeOndismissed,
+  bool removeAll = true,
+  double? left = 0,
+  double? right = 0,
+  double? top = 0,
+  double? bottom = 0,
+  EdgeInsets? margin,
+  Position position = Position.none,
+  Object? showKey,
+  void Function(OverlayMixin owner)? onTap,
+  Widget Function(BuildContext context, Widget child)? builder,
+  Widget Function(
+          Widget child, UserGestureController<OverlayPannelBuilder> controller)?
+      transition,
 }) {
-  final controller = BannerController(
-    stay: duration,
-    content: content,
-    radius: radius,
-    color: color,
-    closeOndismissed: closeOndismissed,
-  );
-  return BannerDelegate(
-    controller,
-    animationDuration,
-    delayDuration: delayDuration,
-  )..show();
-}
+  final offset = _getOffsetFrom(position);
 
-ToastDelegate _syncToast(
-  Widget content, {
-  Duration duration = const Duration(seconds: 3),
-  Duration animationDuration = const Duration(milliseconds: 400),
-  BorderRadius? radius,
-  Color? color,
-  double bottomPadding = 80.0,
-  EdgeInsets? padding,
-  bool? closeOndismissed,
-}) {
-  final controller = ToastController(
-    content: content,
+  final controller = OverlayPannelBuilder(
+    showKey: showKey,
+    closeOndismissed: closeOndismissed ?? true,
     stay: duration,
-    bottomPadding: bottomPadding,
-    color: color,
-    radius: radius,
-    padding: padding,
-    closeOndismissed: closeOndismissed,
+    builder: (context, self) {
+      final key = GlobalKey();
+
+      Widget Function(Widget child)? localTransition;
+      if (transition != null) {
+        localTransition = (Widget child) {
+          return transition(child, self);
+        };
+      } else if (offset != null) {
+        localTransition = (Widget child) {
+          return AnimatedBuilder(
+            animation: self.userGesture,
+            builder: (context, _) {
+              if (self.userGesture.value) {
+                final position = self.owner.controller.drive(offset);
+
+                return SlideTransition(position: position, child: child);
+              }
+
+              return CurvedAnimationWidget(
+                builder: (context, animation) {
+                  final position = animation.drive(offset);
+                  return SlideTransition(position: position, child: child);
+                },
+                controller: self.owner.controller,
+              );
+            },
+          );
+        };
+      }
+
+      VoidCallback? _onTap;
+      if (onTap != null) {
+        _onTap = () {
+          onTap(self.owner);
+        };
+      }
+      return OverlaySideGesture(
+        sizeKey: key,
+        entry: self,
+        top: position == Position.bottom ? null : top,
+        left: position == Position.right ? null : left,
+        right: position == Position.left ? null : right,
+        bottom: position == Position.top ? null : bottom,
+        transition: localTransition,
+        onTap: _onTap,
+        builder: (context) {
+          Widget child = OverlayWidget(
+            content: content,
+            sizeKey: key,
+            color: color,
+            radius: radius,
+            margin: margin,
+            removeAll: removeAll,
+            position: position,
+          );
+          if (builder != null) {
+            child = builder(context, child);
+          }
+          return child;
+        },
+      );
+    },
   );
-  return ToastDelegate(
-    controller,
-    animationDuration,
-  )..show();
+
+  return OverlayMixinDelegate(controller, animationDuration,
+      delayDuration: delayDuration)
+    ..show();
 }

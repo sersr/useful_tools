@@ -1,8 +1,10 @@
+import 'package:flutter/material.dart';
+
 import 'nav_overlay_mixin.dart';
 import 'overlay.dart';
 
 abstract class OverlayObserver {
-  OverlayGetter? get overlayGetter;
+  StateGetter<OverlayState>? get overlayGetter;
   void insert(OverlayMixin entry) {}
 
   void hide(OverlayMixin entry) {}
@@ -13,7 +15,7 @@ abstract class OverlayObserver {
 class OverlayObserverState extends OverlayObserver {
   OverlayObserverState({this.overlayGetter});
   @override
-  OverlayGetter? overlayGetter;
+  StateGetter<OverlayState>? overlayGetter;
 
   final _entries = <OverlayMixin>{};
 

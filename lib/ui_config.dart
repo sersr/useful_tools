@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:utils/event_queue.dart';
 
 Future<void> uiOverlay({bool hide = true}) {
-  return EventQueue.runTask(uiOverlay, () {
+  return EventQueue.run(uiOverlay, () {
     if (hide) {
       return SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
@@ -30,7 +30,7 @@ SystemUiOverlayStyle getOverlayStyle({bool dark = false, bool? statusDark}) {
 }
 
 Future<void> setOrientation(bool portrait) {
-  return EventQueue.runTask(setOrientation, () {
+  return EventQueue.run(setOrientation, () {
     if (portrait) {
       return SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitDown,

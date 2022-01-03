@@ -9,27 +9,31 @@ import 'overlay.dart';
 import 'overlay_observer.dart';
 
 /// 异步
-mixin OverlayDelegate {
+mixin StateAsyncGetter<T extends State> {
   @protected
   Object get key;
-  OverlayBase get overlayBase => Nav;
 
+  FutureOr<T?> getState();
+
+  Future<void> init() {
+    return EventQueue.runOne(key, () => waitState(initRun, getState));
+  }
+
+  FutureOr<void> initRun(T overlayState) {}
+}
+
+mixin OverlayDelegate on StateAsyncGetter<OverlayState> {
   OverlayObserver? _overlayObserver;
   set overlay(OverlayObserver? overlayObserver) {
     _overlayObserver = overlayObserver;
   }
 
-  FutureOr<OverlayState?> getOverlay() {
+  @override
+  FutureOr<OverlayState?> getState() {
     final getter = _overlayObserver?.overlayGetter;
-    if (getter != null) {
-      return getter();
-    }
-    return overlayBase.getOverlay();
-  }
+    if (getter != null) return getter();
 
-  Future<void> init() {
-    return EventQueue.runOne(
-        key, () => waitOverlay(initRun, overlayGetter: getOverlay));
+    return Nav.getOverlay();
   }
 
   Future<void> get future;
@@ -38,8 +42,7 @@ mixin OverlayDelegate {
   bool get closed;
   bool get isAnimating;
   bool get showStatus;
-  @protected
-  FutureOr<void> initRun(OverlayState overlayState) {}
+
   FutureOr<bool> show();
   FutureOr<bool> hide();
   void toggle();
@@ -49,17 +52,16 @@ mixin OverlayDelegate {
   void close();
 }
 
-class OverlayMixinDelegate with OverlayDelegate {
+class OverlayMixinDelegate<T extends OverlayMixin>
+    with StateAsyncGetter<OverlayState>, OverlayDelegate {
   OverlayMixinDelegate(this._controller, this.duration,
       {this.delayDuration = Duration.zero});
   @override
   Object get key => _controller;
-  final OverlayMixin _controller;
+  final T _controller;
 
   final Duration duration;
   final Duration delayDuration;
-
-  FutureOr<void>? get runner => EventQueue.getQueueRunner(key);
 
   @override
   Future<void> get future => _controller.future;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../overlay/export.dart';
+import 'state_getter.dart';
 
 class NavObserver extends NavigatorObserver {
   OverlayState? get overlay => navigator?.overlay;
@@ -47,11 +48,22 @@ class NavObserver extends NavigatorObserver {
   // }
 }
 
-class _NavGlobalImpl with OverlayBase {
-  final NavObserver observer = NavObserver();
-
+class NavigatorBase with StateBase<NavigatorState> {
+  NavigatorBase(this.getNavigator);
+  NavigatorState? Function() getNavigator;
   @override
-  OverlayState? get overlay => observer.overlay;
+  NavigatorState? get currentState => getNavigator();
+}
+
+abstract class NavInterface {}
+
+class _NavGlobalImpl extends NavInterface {
+  final NavObserver observer = NavObserver();
+  late final _base = OverlayBase(getOverlayState: () => observer.overlay);
+  late final _baseNav = NavigatorBase(() => observer.navigator);
+
+  late final getOverlay = _base.getState;
+  late final getNavigator = _baseNav.getState;
 }
 
 // ignore: non_constant_identifier_names

@@ -162,8 +162,6 @@ class ImageRefCache {
 
     LoadStatus _defLoad() {
       if (!stream.hasListener) {
-        assert(Log.i('stream: no listeners'));
-
         /// 如果资源没被释放，那么 [_pictures] 中必定包含[stream]对象
         /// 因为移动操作只有当前任务完成之后才有效
         assert(stream.close || _liveImageRefs[key] == stream);
@@ -227,7 +225,7 @@ class ImageRefCache {
         setImage(null, false);
       }
 
-      final path = await EventQueue.runTask(
+      final path = await EventQueue.run(
           preCacheUrl,
           () => _def(deferred, () async {
                 final _path = await getPath(url);
@@ -279,7 +277,7 @@ class ImageRefCache {
         }
       }
 
-      EventQueue.runTask(this, () => _def(deferred, _imageTask, _autoDone),
+      EventQueue.run(this, () => _def(deferred, _imageTask, _autoDone),
           channels: 4);
     });
   }
@@ -301,7 +299,7 @@ class ImageRefCache {
         setImage(null, false);
       }
 
-      final bytes = await EventQueue.runTask(
+      final bytes = await EventQueue.run(
           preCacheUrlMemory,
           () => _def(deferred, () async {
                 final bytes = await getPath();

@@ -213,7 +213,7 @@ class MyScrollPhysics extends ScrollPhysics {
   @override
   bool recommendDeferredLoading(
       double velocity, ScrollMetrics metrics, BuildContext context) {
-    return velocity.abs() > 100;
+    return velocity.abs() > 30;
   }
 
   @override
@@ -399,7 +399,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
         final onRefreshing = r.onRefreshing;
         // 在刷新期间是否阻止再次刷新事件？
         if (onRefreshing != null) {
-          EventQueue.runTask(_RefreshWidgetState, () async {
+          EventQueue.run(_RefreshWidgetState, () async {
             if (!mounted) return;
             bool _con() {
               return controller == refresh &&

@@ -46,7 +46,7 @@ class TextCache {
   }
 
   static Future<R> runTextPainter<R>(Future<R> Function() task) {
-    return EventQueue.runTask(textPainter, task);
+    return EventQueue.run(textPainter, task);
   }
 
   static Future<List<TextPainter>> oneTextPainter({
@@ -59,7 +59,7 @@ class TextCache {
     bool Function(int endPosition, Characters paragraph, String currentLine)?
         addText,
   }) {
-    return EventQueue.runTask(
+    return EventQueue.run(
       textPainter,
       () => textPainter(
         text: text,

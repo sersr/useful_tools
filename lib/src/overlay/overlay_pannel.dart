@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'nav_overlay_mixin.dart';
 import 'overlay_event.dart';
 
-typedef WidgetBuilder = Widget Function(BuildContext context);
-
 mixin OverlayPannel on OverlayMixin, OverlayEvent {
   final _entries = <OverlayEntry>[];
 
@@ -22,10 +20,12 @@ mixin OverlayPannel on OverlayMixin, OverlayEvent {
   @override
   void onCreateOverlayEntry() {
     overlay.insertAll(_entries);
+    super.onCreateOverlayEntry();
   }
 
   @override
   void onRemoveOverlayEntry() {
+    super.onRemoveOverlayEntry();
     for (var item in _entries) {
       item.remove();
     }
