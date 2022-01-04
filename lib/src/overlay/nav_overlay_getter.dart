@@ -7,7 +7,7 @@ import '../navigation/export.dart';
 import 'nav_overlay_mixin.dart';
 import 'overlay_observer.dart';
 
-mixin OverlayDelegate on StateAsyncGetter<OverlayState> {
+abstract class OverlayDelegate with StateAsyncGetter<OverlayState> {
   OverlayObserver? _overlayObserver;
   set overlay(OverlayObserver? overlayObserver) {
     _overlayObserver = overlayObserver;
@@ -37,8 +37,7 @@ mixin OverlayDelegate on StateAsyncGetter<OverlayState> {
   void close();
 }
 
-class OverlayMixinDelegate<T extends OverlayMixin>
-    with StateAsyncGetter<OverlayState>, OverlayDelegate {
+class OverlayMixinDelegate<T extends OverlayMixin> extends OverlayDelegate {
   OverlayMixinDelegate(this._controller, this.duration,
       {this.delayDuration = Duration.zero});
   @override
