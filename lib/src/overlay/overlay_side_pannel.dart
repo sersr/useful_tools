@@ -99,9 +99,14 @@ class OverlayPannelBuilder
   final bool closeOnDissmissed;
   @override
   final Object? showKey;
+
+  // 当处于用户手势行为中,不进行动画
+  // @override
+  // bool get shouldHide => !_userGestureController.userGesture.value;
 }
 
-class OverlaySideGesture extends StatefulWidget {
+/// Widget
+class OverlaySideGesture extends StatelessWidget {
   const OverlaySideGesture({
     Key? key,
     this.left = 0,
@@ -125,13 +130,9 @@ class OverlaySideGesture extends StatefulWidget {
   final VoidCallback? onTap;
   final GlobalKey sizeKey;
   final bool useGesture;
-  @override
-  State<OverlaySideGesture> createState() => _OverlaySideGestureState();
-}
 
-class _OverlaySideGestureState extends State<OverlaySideGesture> {
   set user(bool v) {
-    widget.entry.userGesture.value = v;
+    entry.userGesture.value = v;
   }
 
   AnimationController get controller {
@@ -198,7 +199,7 @@ class _OverlaySideGestureState extends State<OverlaySideGesture> {
     }
   }
 
-  OverlayMixin get owner => widget.entry.owner;
+  OverlayMixin get owner => entry.owner;
 
   bool get closed => owner.closed;
   bool get showing => owner.showing;
@@ -207,11 +208,9 @@ class _OverlaySideGestureState extends State<OverlaySideGesture> {
     controller.value = v.clamp(0.0, 1.0);
   }
 
-  VoidCallback? get onTap => widget.onTap;
-
   Size? get size {
     try {
-      return widget.sizeKey.currentContext?.size;
+      return sizeKey.currentContext?.size;
     } catch (e) {
       Log.i(e);
     }
@@ -228,31 +227,28 @@ class _OverlaySideGestureState extends State<OverlaySideGesture> {
 
   bool get hided => owner.hided;
 
-  bool get topNull => widget.top == null;
-  bool get leftNull => widget.left == null;
-  bool get rightNull => widget.right == null;
-  bool get bottomNull => widget.bottom == null;
+  bool get topNull => top == null;
+  bool get leftNull => left == null;
+  bool get rightNull => right == null;
+  bool get bottomNull => bottom == null;
   bool get isTop => bottomNull && !topNull && !leftNull && !rightNull;
   bool get isLeft => rightNull && !topNull && !leftNull && !bottomNull;
   bool get isBottom => topNull && !leftNull && !rightNull && !bottomNull;
   bool get isRight => leftNull && !topNull && !rightNull && !bottomNull;
   bool get isHorizontal => isLeft || isRight;
   bool get isVertical => isTop || isBottom;
+
   @override
   Widget build(BuildContext context) {
-    // context 发生改变
-    Widget child = Builder(
-      builder: (context) {
-        return widget.builder(context);
-      },
-    );
-    if (widget.transition != null) {
-      child = widget.transition!(child);
+    Widget child = builder(context);
+
+    if (transition != null) {
+      child = transition!(child);
     }
 
     if (onTap != null) {
       child = GestureDetector(onTap: onTap, child: child);
-    } else if (widget.useGesture) {
+    } else if (useGesture) {
       child = GestureDetector(
         onHorizontalDragDown: isHorizontal ? _userEnter : null,
         onHorizontalDragStart: isHorizontal ? _userEnter : null,
@@ -268,10 +264,10 @@ class _OverlaySideGestureState extends State<OverlaySideGesture> {
       );
     }
     return Positioned(
-      top: widget.top,
-      left: widget.left,
-      right: widget.right,
-      bottom: widget.bottom,
+      top: top,
+      left: left,
+      right: right,
+      bottom: bottom,
       child: child,
     );
   }
@@ -319,10 +315,7 @@ class OverlayWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
-    final themeColor = isDark
-        ? colorScheme.onSurface
-        : Color.alphaBlend(
-            colorScheme.onSurface.withOpacity(0.80), colorScheme.surface);
+    final themeColor = colorScheme.surface;
     var padding = MediaQuery.of(context).padding;
     var innerPadding = EdgeInsets.zero;
 
@@ -343,8 +336,8 @@ class OverlayWidget extends StatelessWidget {
       child: DefaultTextStyle(
         style: TextStyle(
             color: isDark
-                ? const Color.fromARGB(255, 44, 44, 44)
-                : const Color.fromARGB(255, 221, 221, 221)),
+                ? const Color.fromARGB(255, 221, 221, 221)
+                : const Color.fromARGB(255, 44, 44, 44)),
         child: content,
       ),
     );

@@ -98,6 +98,66 @@ extension OverlayExt on NavInterface {
       },
     );
   }
+
+  Future<T?> push<T extends Object?>(Route<T> route) {
+    final push = NavPushAction(route);
+    _navDelegate(push);
+    return push.result;
+  }
+
+  Future<T?> pushNamed<T extends Object?>(
+    String routeName, {
+    Object? arguments,
+  }) {
+    final action = NavPushNamedAction<T>(routeName, arguments);
+    _navDelegate(action);
+    return action.result;
+  }
+
+  Future<T?> pushReplacement<T extends Object?, TO extends Object?>(
+      Route<T> newRoute,
+      {TO? result}) {
+    final action = NavPushReplacementdAction(newRoute, result);
+    _navDelegate(action);
+    return action.result;
+  }
+
+  void pop<T extends Object?>([T? result]) {
+    final pop = NavPopAction(result);
+    _navDelegate(pop);
+  }
+
+  Future<bool?> maybePop<T extends Object?>([T? result]) {
+    final pop = NavMaybePopAction(result);
+    _navDelegate(pop);
+    return pop.result;
+  }
+
+  void replace<T extends Object?>(
+      {required Route<dynamic> oldRoute, required Route<T> newRoute}) {
+    final replace = NavReplaceAction(oldRoute, newRoute);
+    _navDelegate(replace);
+  }
+
+  Future<String?> restorableReplace<T extends Object?>(
+      {required Route<dynamic> oldRoute,
+      required RestorableRouteBuilder<T> newRouteBuilder,
+      Object? arguments}) {
+    final action =
+        NavRestorableReplaceAction(oldRoute, newRouteBuilder, arguments);
+    _navDelegate(action);
+    return action.result;
+  }
+
+  void replaceRouteBelow<T extends Object?>(
+      {required Route<dynamic> anchorRoute, required Route<T> newRoute}) {
+    final action = NavReplaceBelowAction(anchorRoute, newRoute);
+    _navDelegate(action);
+  }
+}
+
+void _navDelegate(NavAction action) {
+  NavigatorDelegate(action).init();
 }
 
 Tween<Offset>? _getOffsetFrom(Position position) {

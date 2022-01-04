@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../navigation/export.dart';
 import 'nav_overlay_mixin.dart';
-import 'overlay.dart';
 
 abstract class OverlayObserver {
   StateGetter<OverlayState>? get overlayGetter;

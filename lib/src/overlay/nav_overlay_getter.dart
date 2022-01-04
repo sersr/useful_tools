@@ -5,22 +5,7 @@ import 'package:utils/utils.dart';
 
 import '../navigation/export.dart';
 import 'nav_overlay_mixin.dart';
-import 'overlay.dart';
 import 'overlay_observer.dart';
-
-/// 异步
-mixin StateAsyncGetter<T extends State> {
-  @protected
-  Object get key;
-
-  FutureOr<T?> getState();
-
-  Future<void> init() {
-    return EventQueue.runOne(key, () => waitState(initRun, getState));
-  }
-
-  FutureOr<void> initRun(T overlayState) {}
-}
 
 mixin OverlayDelegate on StateAsyncGetter<OverlayState> {
   OverlayObserver? _overlayObserver;
@@ -29,7 +14,7 @@ mixin OverlayDelegate on StateAsyncGetter<OverlayState> {
   }
 
   @override
-  FutureOr<OverlayState?> getState() {
+  OverlayState? getState() {
     final getter = _overlayObserver?.overlayGetter;
     if (getter != null) return getter();
 
@@ -79,11 +64,11 @@ class OverlayMixinDelegate<T extends OverlayMixin>
   bool get showStatus => done && _controller.showStatus;
 
   @override
-  FutureOr<void> initRun(OverlayState overlayState) async {
+  FutureOr<void> initRun(OverlayState state) async {
     if (active) return;
 
-    assert(overlayState.mounted);
-    _controller.init(overlayState: overlayState, duration: duration);
+    assert(state.mounted);
+    _controller.init(overlayState: state, duration: duration);
     if (delayDuration != Duration.zero) {
       await release(delayDuration);
     }
