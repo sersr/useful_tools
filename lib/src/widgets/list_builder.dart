@@ -138,57 +138,18 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
 
   bool _onNotification(Notification n) {
     if (refresh.refreshDelegate == null) return false;
-    final maxExtent = refresh.maxExtent;
     if (n is OverscrollIndicatorNotification) {
-      if (n.leading || refresh.disallowTrailingIndicator) {
+      if (n.leading) {
         n.disallowIndicator();
-      } else if (!n.leading) {
-        refresh.showTrailingIndicator = true;
-      }
+      } else {}
     } else if (n is ScrollStartNotification) {
       refresh.reset(n.metrics.extentBefore);
     } else if (n is ScrollUpdateNotification) {
-      if (refresh.mode != RefreshMode.animatedDone &&
-          refresh.mode != RefreshMode.animatedIgnore) {
-        final scrollDelta = n.scrollDelta;
-
-        final mes = n.metrics;
-
-        if (scrollDelta != null && mes.extentAfter > 0.0) {
-          if (refresh.value > 0.0 && scrollDelta > 0) {
-            final value = (refresh.value - scrollDelta).clamp(0.0, maxExtent);
-            final delta = refresh.value - value;
-            Scrollable.of(n.context!)!.position.correctBy(-delta);
-            refresh._setValue(value);
-          }
-        }
-      }
+      refresh.goScrollUpdate(n);
     } else if (n is OverscrollNotification) {
-      final mes = n.metrics;
-      final afterZero = mes.extentAfter == 0.0;
-      final overscroll = n.overscroll;
-      if (overscroll < 0 || afterZero) {
-        if (refresh.showTrailingIndicator) {
-          return false;
-        }
-        if (refresh.canRefresh) {
-          final value = (refresh.value - overscroll).clamp(0.0, maxExtent);
-
-          if (!refresh.disallowTrailingIndicator) {
-            /// sliver 占不满空间不显示尾部Indicator
-            refresh._disallowTrailingIndicator =
-                afterZero && mes.pixels == 0.0 && value > 0.0;
-          }
-
-          refresh._setValue(value);
-        }
-      }
+      refresh.goOverScroll(n);
     } else if (n is ScrollEndNotification) {
-      if ((refresh.value - maxExtent).abs() < 0.5) {
-        refresh._setMode(RefreshMode.refreshing);
-      } else {
-        refresh._setMode(RefreshMode.ignore);
-      }
+      refresh.goScrollEnd(n);
     }
     return false;
   }
@@ -251,6 +212,7 @@ class RefreshDelegate {
     this.onDragIgnore,
     this.onDone,
     this.onRefreshing,
+    this.triggerMode = RefreshIndicatorTriggerMode.onEdge,
     required this.maxExtent,
     required this.builder,
   }) : assert(maxExtent > 0.0);
@@ -263,6 +225,7 @@ class RefreshDelegate {
   final OnRefreshing? onRefreshing;
   final RefreshBuilder builder;
   final double maxExtent;
+  final RefreshIndicatorTriggerMode triggerMode;
 
   /// 生命周期自动设置
   _Refresh? _refresh;
@@ -299,14 +262,11 @@ class _Refresh extends ChangeNotifier {
 
   double get value => _value;
   bool canRefresh = false;
-  bool _disallowTrailingIndicator = false;
-  bool get disallowTrailingIndicator => _disallowTrailingIndicator;
-  bool showTrailingIndicator = false;
 
   void reset(double extentBefore) {
-    _disallowTrailingIndicator = _value != 0.0;
-    showTrailingIndicator = false;
-    canRefresh = extentBefore == 0.0;
+    canRefresh =
+        refreshDelegate?.triggerMode == RefreshIndicatorTriggerMode.anywhere ||
+            extentBefore == 0.0; // onEdge
   }
 
   void _setValue(double v, [bool animated = false]) {
@@ -336,6 +296,48 @@ class _Refresh extends ChangeNotifier {
 
   void _setMode(RefreshMode m) {
     _mode.value = m;
+  }
+
+  /// [goScrollUpdate]满足条件: value > 0
+  /// 下拉会调用 [goOverScroll]
+  /// 如果列表内容没有占满视口,就会出现`extentBefore == 0.0 && extentAfter == 0.0`
+  void goScrollUpdate(ScrollUpdateNotification n) {
+    if (mode != RefreshMode.animatedDone &&
+        mode != RefreshMode.animatedIgnore) {
+      final scrollDelta = n.scrollDelta;
+
+      final mes = n.metrics;
+
+      if (scrollDelta != null) {
+        /// refresh 模式下: [ScrollUpdateNotification]只有在`value > 0.0`才有效
+        if (value > 0.0 && (scrollDelta > 0 || mes.extentBefore == 0.0)) {
+          final newValue = (value - scrollDelta).clamp(0.0, maxExtent);
+          Scrollable.of(n.context!)!.position.correctBy(-scrollDelta);
+          _setValue(newValue);
+        }
+      }
+    }
+  }
+
+  void goOverScroll(OverscrollNotification n) {
+    final mes = n.metrics;
+    final beforeZero = mes.extentBefore == 0.0;
+    final overscroll = n.overscroll;
+    if (overscroll < 0 || (beforeZero && value > 0.0)) {
+      if (canRefresh) {
+        final newValue = (value - overscroll).clamp(0.0, maxExtent);
+
+        _setValue(newValue);
+      }
+    }
+  }
+
+  void goScrollEnd(ScrollEndNotification n) {
+    if ((value - maxExtent).abs() < 0.5) {
+      _setMode(RefreshMode.refreshing);
+    } else {
+      _setMode(RefreshMode.ignore);
+    }
   }
 }
 

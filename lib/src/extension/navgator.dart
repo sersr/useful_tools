@@ -98,7 +98,9 @@ extension OverlayExt on NavInterface {
       },
     );
   }
+}
 
+extension NavigatorExt on NavInterface {
   Future<T?> push<T extends Object?>(Route<T> route) {
     final push = NavPushAction(route);
     _navDelegate(push);
@@ -154,6 +156,50 @@ extension OverlayExt on NavInterface {
     final action = NavReplaceBelowAction(anchorRoute, newRoute);
     _navDelegate(action);
   }
+
+  Future<T?> showDialog<T>({
+    required WidgetBuilder builder,
+    bool barrierDismissible = true,
+    Color? barrierColor = Colors.black54,
+    String? barrierLabel,
+    bool useSafeArea = true,
+    RouteSettings? routeSettings,
+    RouteSettings? settings,
+    CapturedThemes? themes,
+  }) {
+    final route = RawDialogRoute<T>(
+      pageBuilder: (BuildContext buildContext, Animation<double> animation,
+          Animation<double> secondaryAnimation) {
+        final Widget pageChild = Builder(builder: builder);
+        Widget dialog = themes?.wrap(pageChild) ?? pageChild;
+        if (useSafeArea) {
+          dialog = SafeArea(child: dialog);
+        }
+        return dialog;
+      },
+      barrierDismissible: barrierDismissible,
+      barrierColor: barrierColor,
+      barrierLabel: barrierLabel,
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: _buildMaterialDialogTransitions,
+      settings: settings,
+    );
+    return push(route);
+  }
+}
+
+Widget _buildMaterialDialogTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child) {
+  return FadeTransition(
+    opacity: CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOut,
+    ),
+    child: child,
+  );
 }
 
 void _navDelegate(NavAction action) {
