@@ -14,7 +14,7 @@ dependencies:
     sdk: flutter
   utils:
     git: 
-      url: ../utils
+      url: git@github.com:sersr/utils.git
 
 dev_dependencies:
   flutter_test:
