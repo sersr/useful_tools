@@ -99,6 +99,11 @@ extension OverlayExt on NavInterface {
     );
   }
 }
+extension Content on BuildContext {
+  bool get isDarkMode {
+    return MediaQuery.of(this).platformBrightness == ThemeMode.dark;
+  }
+}
 
 extension NavigatorExt on NavInterface {
   Future<T?> push<T extends Object?>(Route<T> route) {
