@@ -232,7 +232,7 @@ class RefreshDelegate {
   void show() {
     if (_context != null && _refresh != null) {
       final position = Scrollable.of(_context!)!.position;
-      position.setPixels(position.minScrollExtent);
+      position.correctPixels(position.minScrollExtent);
       _refresh!
         .._setValue(maxExtent)
         .._setMode(RefreshMode.refreshing);
