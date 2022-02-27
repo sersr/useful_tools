@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:utils/utils.dart';
 
@@ -63,6 +64,8 @@ class ListViewBuilder extends StatefulWidget {
     this.finishLayout,
     this.refreshDelegate,
     this.color,
+    this.physics,
+    this.scrollBehavior,
   }) : super(key: key);
 
   final int? itemCount;
@@ -75,6 +78,8 @@ class ListViewBuilder extends StatefulWidget {
   final FinishLayout? finishLayout;
   final Color? color;
   final RefreshDelegate? refreshDelegate;
+  final ScrollPhysics? physics;
+  final ScrollBehavior? scrollBehavior;
   @override
   State<ListViewBuilder> createState() => _ListViewBuilderState();
 }
@@ -114,43 +119,36 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
         : SliverFixedExtentList(
             delegate: delegate, itemExtent: widget.itemExtent!);
 
-    return ColoredBox(
-      color: widget.color ?? const Color.fromRGBO(236, 236, 236, 1),
+    final config = ScrollConfiguration.of(context);
+    return Container(
+      color: widget.color,
       child: NotificationListener(
           onNotification: _onNotification,
-          child: CustomScrollView(
-            physics:
-                const MyScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-            primary: widget.primary,
-            cacheExtent: widget.cacheExtent,
-            controller: widget.scrollController,
-            slivers: [
-              if (refresh.refreshDelegate != null)
-                SliverToBoxAdapter(
-                  child:
-                      RepaintBoundary(child: RefreshWidget(refresh: refresh)),
-                ),
-              SliverPadding(padding: _padding, sliver: sliveList)
-            ],
+          child: ScrollConfiguration(
+            behavior: config.copyWith(
+                physics: const MyScrollPhysics()
+                    .applyTo(config.getScrollPhysics(context))),
+            child: CustomScrollView(
+              physics: widget.physics,
+              primary: widget.primary,
+              cacheExtent: widget.cacheExtent,
+              controller: widget.scrollController,
+              scrollBehavior: widget.scrollBehavior,
+              slivers: [
+                if (refresh.refreshDelegate != null)
+                  SliverToBoxAdapter(
+                    child:
+                        RepaintBoundary(child: RefreshWidget(refresh: refresh)),
+                  ),
+                SliverPadding(padding: _padding, sliver: sliveList)
+              ],
+            ),
           )),
     );
   }
 
   bool _onNotification(Notification n) {
-    if (refresh.refreshDelegate == null) return false;
-    if (n is OverscrollIndicatorNotification) {
-      if (n.leading) {
-        n.disallowIndicator();
-      } else {}
-    } else if (n is ScrollStartNotification) {
-      refresh.reset(n.metrics.extentBefore);
-    } else if (n is ScrollUpdateNotification) {
-      refresh.goScrollUpdate(n);
-    } else if (n is OverscrollNotification) {
-      refresh.goOverScroll(n);
-    } else if (n is ScrollEndNotification) {
-      refresh.goScrollEnd(n);
-    }
+    refresh.onNotifition(n);
     return false;
   }
 }
@@ -158,7 +156,7 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
 typedef FinishLayout = void Function(int firstIndex, int lastIndex);
 
 class MyDelegate extends SliverChildBuilderDelegate {
-  MyDelegate(NullableIndexedWidgetBuilder builder,
+  const MyDelegate(NullableIndexedWidgetBuilder builder,
       {this.finishLayout, int? childCount})
       : super(builder, childCount: childCount);
 
@@ -233,11 +231,11 @@ class RefreshDelegate {
 
   void show() {
     if (_context != null && _refresh != null) {
+      final position = Scrollable.of(_context!)!.position;
+      position.setPixels(position.minScrollExtent);
       _refresh!
         .._setValue(maxExtent)
         .._setMode(RefreshMode.refreshing);
-      Scrollable.of(_context!)!.position.jumpTo(0.0);
-      // Scrollable.of(_context!)!.position.correctPixels(0.0);
     }
   }
 
@@ -273,12 +271,14 @@ class _Refresh extends ChangeNotifier {
     final _v = v.clamp(0.0, maxExtent);
     if (_v == _value) return;
     _value = _v;
-    if (_value == 0.0) {
-      _setMode(RefreshMode.idle);
-    } else if (_value == maxExtent) {
-      _setMode(RefreshMode.dragEnd);
-    } else if (!animated) {
-      _setMode(RefreshMode.dragStart);
+    if (!animated) {
+      if (_value == 0.0) {
+        _setMode(RefreshMode.idle);
+      } else if (_value == maxExtent) {
+        _setMode(RefreshMode.dragEnd);
+      } else {
+        _setMode(RefreshMode.dragStart);
+      }
     }
     notifyListeners();
   }
@@ -298,17 +298,37 @@ class _Refresh extends ChangeNotifier {
     _mode.value = m;
   }
 
+  bool get _active => refreshDelegate != null;
+
+  void onNotifition(Notification notification) {
+    if (!_active) return;
+    if (notification is OverscrollIndicatorNotification) {
+      if (notification.leading) {
+        notification.disallowIndicator();
+      }
+    } else if (notification is ScrollStartNotification) {
+      reset(notification.metrics.extentBefore);
+    } else if (notification is ScrollUpdateNotification) {
+      goScrollUpdate(notification);
+    } else if (notification is OverscrollNotification) {
+      goOverScroll(notification);
+    } else if (notification is ScrollEndNotification) {
+      goScrollEnd(notification);
+    }
+  }
+
   /// [goScrollUpdate]满足条件: value > 0
   /// 下拉会调用 [goOverScroll]
   /// 如果列表内容没有占满视口,就会出现`extentBefore == 0.0 && extentAfter == 0.0`
   void goScrollUpdate(ScrollUpdateNotification n) {
+    if (!_active) return;
     if (mode != RefreshMode.animatedDone &&
         mode != RefreshMode.animatedIgnore) {
       final scrollDelta = n.scrollDelta;
 
-      final mes = n.metrics;
+      if (scrollDelta != null && n.dragDetails != null) {
+        final mes = n.metrics;
 
-      if (scrollDelta != null) {
         /// refresh 模式下: [ScrollUpdateNotification]只有在`value > 0.0`才有效
         if (value > 0.0 && (scrollDelta > 0 || mes.extentBefore == 0.0)) {
           final newValue = (value - scrollDelta).clamp(0.0, maxExtent);
@@ -320,6 +340,8 @@ class _Refresh extends ChangeNotifier {
   }
 
   void goOverScroll(OverscrollNotification n) {
+    if (!_active) return;
+
     final mes = n.metrics;
     final beforeZero = mes.extentBefore == 0.0;
     final overscroll = n.overscroll;
@@ -333,6 +355,7 @@ class _Refresh extends ChangeNotifier {
   }
 
   void goScrollEnd(ScrollEndNotification n) {
+    if (!_active) return;
     if ((value - maxExtent).abs() < 0.5) {
       _setMode(RefreshMode.refreshing);
     } else {
@@ -380,7 +403,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
     void _startAnimated() {
       animationController.value = controller.fac;
       animationController.animateTo(0,
-          duration: Duration(milliseconds: (controller.fac * 500).toInt()),
+          duration: Duration(milliseconds: (controller.fac * 600).toInt()),
           curve: Curves.ease);
     }
 
@@ -403,25 +426,24 @@ class _RefreshWidgetState extends State<RefreshWidget>
         if (onRefreshing != null) {
           EventQueue.run(_RefreshWidgetState, () async {
             if (!mounted) return;
-            bool _con() {
+            bool refreshCondition() {
               return controller == refresh &&
                   refresh.refreshDelegate == controller.refreshDelegate &&
                   refresh.refreshDelegate?.onRefreshing == onRefreshing;
             }
 
-            if (_con()) {
+            if (refreshCondition()) {
               await onRefreshing();
             }
-            if (_con() && controller.mode == RefreshMode.refreshing) {
+            if (refreshCondition() &&
+                controller.mode == RefreshMode.refreshing) {
               controller._setMode(RefreshMode.done);
             } else if (mounted) {
               _update();
             }
           });
         } else {
-          if (controller.mode == RefreshMode.refreshing) {
-            controller._setMode(RefreshMode.done);
-          }
+          controller._setMode(RefreshMode.done);
         }
         _update();
 
@@ -430,9 +452,9 @@ class _RefreshWidgetState extends State<RefreshWidget>
       // 动画事件
       case RefreshMode.ignore:
         r.onDragIgnore?.call();
-        if (animationController.isAnimating) {
-          animationController.stop(canceled: true);
-        }
+        // if (animationController.isAnimating) {
+        //   animationController.stop(canceled: true);
+        // }
 
         _startAnimated();
         controller._setMode(RefreshMode.animatedIgnore);
@@ -440,9 +462,9 @@ class _RefreshWidgetState extends State<RefreshWidget>
         break;
       case RefreshMode.done:
         r.onDone?.call();
-        if (animationController.isAnimating) {
-          animationController.stop(canceled: true);
-        }
+        // if (animationController.isAnimating) {
+        //   animationController.stop(canceled: true);
+        // }
 
         waitAnimated = Timer(const Duration(milliseconds: 800), () {
           if (refresh == controller && mounted) {
