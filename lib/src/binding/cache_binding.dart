@@ -34,7 +34,6 @@ mixin CacheBinding on ServicesBinding {
   void handleMemoryPressure() {
     super.handleMemoryPressure();
     _imageRefCache?.clear();
-    _textCache?.clear();
   }
 }
 TextCache? get textCache => CacheBinding.instance?.textCache;
