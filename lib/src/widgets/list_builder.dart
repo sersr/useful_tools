@@ -380,7 +380,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
   void initState() {
     super.initState();
     refresh = widget.refresh;
-    animationController = AnimationController(
+    animationController = AnimationController.unbounded(
         vsync: this, duration: const Duration(milliseconds: 300));
     animationController.addListener(_tick);
     refresh.addModeListener(_updateMode);
@@ -389,7 +389,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
 
   void _tick() {
     final controller = refresh;
-    final value = animationController.value * controller.maxExtent;
+    final value = animationController.value;
 
     controller._setValue(value, true);
   }
@@ -401,7 +401,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
     waitAnimated?.cancel();
 
     void _startAnimated() {
-      animationController.value = controller.fac;
+      animationController.value = controller.value;
       animationController.animateTo(0,
           duration: Duration(milliseconds: (controller.fac * 600).toInt()),
           curve: Curves.ease);
