@@ -69,9 +69,6 @@ class ImageState extends State<ImageFuture> {
         widget.height != oldWidget.height ||
         widget.width != oldWidget.width ||
         _error) {
-      imageRefInfo?.dispose();
-      imageRefInfo = null;
-      _error = false;
       _sub();
     }
   }
@@ -101,6 +98,8 @@ class ImageState extends State<ImageFuture> {
     }
 
     if (stream != _stream) {
+      imageRefInfo?.dispose();
+      imageRefInfo = null;
       final l = PictureListener(onListener, load: onDefLoad);
       stream?.removeListener(l);
       _stream.addListener(l);
