@@ -15,6 +15,9 @@ dependencies:
   utils:
     git: 
       url: https://github.com/sersr/utils.git
+dependency_overrides:
+  utils: 
+    path: ../utils
 
 dev_dependencies:
   flutter_test:
