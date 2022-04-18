@@ -5,7 +5,8 @@ import 'dart:ui' as ui;
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/event_queue.dart';
+import 'package:nop/utils.dart';
 
 typedef LoadCallback = FutureOr<Uint8List?> Function();
 

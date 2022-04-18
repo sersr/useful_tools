@@ -12,12 +12,12 @@ dependencies:
   equatable: ^2.0.3
   flutter:
     sdk: flutter
-  utils:
+  nop:
     git: 
-      url: https://github.com/sersr/utils.git
+      url: https://github.com/sersr/nop.git
 dependency_overrides:
-  utils: 
-    path: ../utils
+  nop: 
+    path: ../nop
 
 dev_dependencies:
   flutter_test:

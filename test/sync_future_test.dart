@@ -4,7 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/utils.dart';
 
 import 'run_zone.dart';
 

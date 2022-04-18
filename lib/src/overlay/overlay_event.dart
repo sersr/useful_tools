@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:utils/utils.dart';
+import 'package:nop/event_queue.dart';
 
 import 'nav_overlay_mixin.dart';
 

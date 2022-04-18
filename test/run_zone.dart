@@ -2,7 +2,7 @@
 
 import 'dart:async';
 
-import 'package:utils/utils.dart';
+import 'package:nop/utils.dart';
 
 Future<void> runZone(FutureOr<void> Function() callback) async {
   return runZoned(callback,

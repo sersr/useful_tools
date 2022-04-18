@@ -1,7 +1,5 @@
 library useful_tools;
 
-export 'package:utils/utils.dart';
-
 export 'binding.dart';
 export 'change_notifier.dart';
 export 'common.dart';

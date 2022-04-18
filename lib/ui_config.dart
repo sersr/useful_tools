@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/event_queue.dart';
 
 Future<void> uiOverlay({bool hide = true}) {
   return EventQueue.run(uiOverlay, () {

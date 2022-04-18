@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/utils.dart';
 
 typedef WidgetBuilder = Widget Function(
     AnimationController animationController);

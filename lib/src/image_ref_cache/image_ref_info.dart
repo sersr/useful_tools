@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:utils/utils.dart';
-
+import 'package:nop/utils.dart';
 
 class ImageRefInfo {
   ImageRefInfo.imageRef(ui.Image rawImage) : this._(_ImageRef._(rawImage));
@@ -12,7 +11,7 @@ class ImageRefInfo {
   }
   final _ImageRef _imageRef;
   ui.Image get image => _imageRef.rawImage;
-  
+
   void drawImageRef(
       ui.Canvas canvas, ui.Rect src, ui.Rect dst, ui.Paint paint) {
     assert(!disposed);

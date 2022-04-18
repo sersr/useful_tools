@@ -1,8 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/event_queue.dart';
 
 import 'botton.dart';
 

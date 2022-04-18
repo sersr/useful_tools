@@ -5,7 +5,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/event_queue.dart';
+import 'package:nop/utils.dart';
 
 import 'image_ref_info.dart';
 

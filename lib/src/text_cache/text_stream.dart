@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/event_queue.dart';
+import 'package:nop/utils.dart';
 
 class TextCache {
   static Future<R> runTextPainter<R>(Future<R> Function() task) {
@@ -59,7 +61,7 @@ class TextCache {
     bool Function(int endPosition, Characters paragraph, String currentLine)?
         addText,
   }) async {
-    final paragraphs = split(text);
+    final paragraphs = LineSplitter.split(text).toList();
 
     final fontSize = style.fontSize!;
     final words = width ~/ fontSize;

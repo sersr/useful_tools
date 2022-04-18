@@ -1,17 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/event_queue.dart';
+import 'package:nop/utils.dart';
 
 /// 针对[EventQueue]的单元测试
 void main() async {
   test('event tasks 01', () async {
     final events = EventQueue();
     final first = events.awaitTask(() => Log.i('first'));
-    final second =
-        events.awaitOne(() => Log.i('seconds'), taskKey: 'same');
-    final mid =
-        events.awaitOne(() => Log.i('seconds -- mid -- thrid'));
-    final third =
-        events.awaitOne(() => Log.i('third'), taskKey: 'same');
+    final second = events.awaitOne(() => Log.i('seconds'), taskKey: 'same');
+    final mid = events.awaitOne(() => Log.i('seconds -- mid -- thrid'));
+    final third = events.awaitOne(() => Log.i('third'), taskKey: 'same');
     await events.runner;
     expect(await first, true);
     expect(await second, true);
@@ -26,13 +24,10 @@ void main() async {
     /// [events]中的任务并没有真正的执行，所以才有验证的可能
 
     final first = events.awaitTask(() => Log.i('first'));
-    final second =
-        events.awaitOne(() => Log.i('seconds'), taskKey: 'same');
-    final secMidThr =
-        events.awaitOne(() => Log.i('seconds -- mid -- thrid'));
+    final second = events.awaitOne(() => Log.i('seconds'), taskKey: 'same');
+    final secMidThr = events.awaitOne(() => Log.i('seconds -- mid -- thrid'));
 
-    final third =
-        events.awaitOne(() => Log.i('third'), taskKey: 'same');
+    final third = events.awaitOne(() => Log.i('third'), taskKey: 'same');
 
     final fourth = events.awaitOne(() => Log.i('fourth'));
 
@@ -48,29 +43,24 @@ void main() async {
   test('event tasks 03', () async {
     final events = EventQueue();
 
-    await runZonePrint(() async {
-      final first = events.awaitTask(() => Log.i('first'));
-      final second =
-          events.awaitOne(() => Log.i('seconds'), taskKey: 'same');
-      final secMidThr =
-          events.awaitOne(() => Log.i('seconds -- mid -- thrid'));
+    final first = events.awaitTask(() => Log.i('first'));
+    final second = events.awaitOne(() => Log.i('seconds'), taskKey: 'same');
+    final secMidThr = events.awaitOne(() => Log.i('seconds -- mid -- thrid'));
 
-      final third =
-          events.awaitOne(() => Log.i('third '), taskKey: 'same');
+    final third = events.awaitOne(() => Log.i('third '), taskKey: 'same');
 
-      expect(await first, true);
-      expect(await second, true);
+    expect(await first, true);
+    expect(await second, true);
 
-      /// 在[third]任务真正调用前，插入新任务，此时队列中最后一个任务发生改变
-      /// 下次事件循环还未到来
-      final fourth = events.awaitOne(() => Log.i('fourth'));
-      Log.i('add fourth');
-      expect(await secMidThr, null);
-      expect(await third, null);
-      expect(await fourth, true);
+    /// 在[third]任务真正调用前，插入新任务，此时队列中最后一个任务发生改变
+    /// 下次事件循环还未到来
+    final fourth = events.awaitOne(() => Log.i('fourth'));
+    Log.i('add fourth');
+    expect(await secMidThr, null);
+    expect(await third, null);
+    expect(await fourth, true);
 
-      await events.runner;
-      (() => Log.i('hello')).push(events);
-    });
+    await events.runner;
+    (() => Log.i('hello')).push(events);
   });
 }

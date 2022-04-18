@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:utils/utils.dart';
+import 'package:nop/event_queue.dart';
 
 import '../navigation/export.dart';
 import 'nav_overlay_mixin.dart';
