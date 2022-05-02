@@ -86,7 +86,7 @@ class TextCache {
         final atEnd = count == maxLines;
 
         var end = math.min(start + words, paraLength);
-        await releaseUI;
+        await idleWait;
         var tryCount = 0;
         // 确定每一行的字数
         while (true) {
@@ -100,7 +100,7 @@ class TextCache {
             ..text = TextSpan(text: s, style: style)
             ..layout(maxWidth: width);
 
-          await releaseUI;
+          await idleWait;
 
           if (_t.height > _oneHalf) {
             final textPosition = _t.getPositionForOffset(positionOffset);
@@ -121,7 +121,7 @@ class TextCache {
           if (end >= paraLength) break;
         }
 
-        await releaseUI;
+        await idleWait;
         final currentLine = paragraph.getRange(start, end).toString();
         start = end;
         if (addText == null || addText(end, paragraph, currentLine)) {
@@ -139,7 +139,7 @@ class TextCache {
                 textDirection: dir)
               ..layout(maxWidth: width);
           }
-          await releaseUI;
+          await idleWait;
           linesText.add(text);
         }
       }

@@ -254,7 +254,7 @@ class ImageRefCache {
         var error = false;
 
         try {
-          await releaseUI;
+          await idleWait;
           final bytes = await f.readAsBytes();
 
           if (fit == BoxFit.fitHeight) {
@@ -365,7 +365,7 @@ class ImageRefCache {
     Timer.run(() async {
       for (final stream in _map) {
         stream.dispose();
-        await releaseUI;
+        await idleWait;
       }
     });
   }
