@@ -99,6 +99,7 @@ extension OverlayExt on NavInterface {
     );
   }
 }
+
 extension Content on BuildContext {
   bool get isDarkMode {
     return MediaQuery.of(this).platformBrightness == ThemeMode.dark;
@@ -117,6 +118,27 @@ extension NavigatorExt on NavInterface {
     Object? arguments,
   }) {
     final action = NavPushNamedAction<T>(routeName, arguments);
+    _navDelegate(action);
+    return action.result;
+  }
+
+  Future<T?> pushReplacementNamed<T extends Object?, R extends Object?>(
+    String routeName, {
+    R? result,
+    Object? arguments,
+  }) {
+    final action =
+        NavPushReplacementNamedAction<T, R>(routeName, arguments, result);
+    _navDelegate(action);
+    return action.result;
+  }
+
+  Future<T?> popAndPushNamed<T extends Object?, R extends Object?>(
+    String routeName, {
+    R? result,
+    Object? arguments,
+  }) {
+    final action = NavPopAndPushNamedAction<T, R>(routeName, arguments, result);
     _navDelegate(action);
     return action.result;
   }

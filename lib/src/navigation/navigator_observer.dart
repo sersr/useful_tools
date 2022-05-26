@@ -7,6 +7,7 @@ class NavObserver extends NavigatorObserver {
 
   @override
   void didPop(Route route, Route? previousRoute) {
+    route.popped;
     super.didPop(route, previousRoute);
   }
 

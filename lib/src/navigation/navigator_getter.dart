@@ -48,6 +48,38 @@ class NavPushNamedAction<T> extends NavAction with NaviActionResult<T> {
   }
 }
 
+class NavPopAndPushNamedAction<T, R> extends NavAction
+    with NaviActionResult<T> {
+  NavPopAndPushNamedAction(this.routeName, this.arguments, this.popResult);
+  final String routeName;
+  final Object? arguments;
+
+  final R? popResult;
+  @override
+  void action(NavigatorState state) {
+    state
+        .popAndPushNamed<T, R>(routeName,
+            result: popResult, arguments: arguments)
+        .then(complete, onError: completeError);
+  }
+}
+
+class NavPushReplacementNamedAction<T, R> extends NavAction
+    with NaviActionResult<T> {
+  NavPushReplacementNamedAction(this.routeName, this.arguments, this.popResult);
+  final String routeName;
+  final Object? arguments;
+
+  final R? popResult;
+  @override
+  void action(NavigatorState state) {
+    state
+        .pushReplacementNamed<T, R>(routeName,
+            result: popResult, arguments: arguments)
+        .then(complete, onError: completeError);
+  }
+}
+
 class NavPushReplacementdAction<T, TO> extends NavAction
     with NaviActionResult<T> {
   NavPushReplacementdAction(this.route, this.pushResult);
