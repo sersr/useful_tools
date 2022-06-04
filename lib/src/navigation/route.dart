@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:flutter/material.dart';
-import 'package:nop/nop.dart';
-import 'package:useful_tools/useful_tools.dart';
 
-class NopRouteActionEntry<T> with NopRouteAction<T> {
-  NopRouteActionEntry({
+import 'navigator_observer.dart';
+
+class NopRouteAction<T> with NopRouteActionMixin<T> {
+  NopRouteAction({
     this.arguments,
     required this.context,
     required this.route,
@@ -21,7 +20,7 @@ class NopRouteActionEntry<T> with NopRouteAction<T> {
   final NopRoute route;
 }
 
-mixin NopRouteAction<T> {
+mixin NopRouteActionMixin<T> {
   NopRoute get route;
   Object? get arguments;
   BuildContext? get context;
@@ -56,13 +55,12 @@ class NopRoute {
     this.desc = '',
   });
 
-  static late final NavigationActions navigationActions =
-      NavigationNativeActions(
+  static final NavigationActions navigationActions = NavigationNativeActions(
     pushNamedCallabck: Navigator.pushNamed,
     popAndPushNamedCallabck: Navigator.popAndPushNamed,
     pushReplacementNamedCallabck: Navigator.pushReplacementNamed,
   );
-  static late NavigationActions navigationWithoutContext = NavigationNavActions(
+  static NavigationActions navigationWithoutContext = NavigationNavActions(
     pushNamedCallabck: Nav.pushNamed,
     popAndPushNamedCallabck: Nav.popAndPushNamed,
     pushReplacementNamedCallabck: Nav.pushReplacementNamed,
@@ -117,8 +115,8 @@ class NopRoute {
       }
     }
     if (!pathName.contains(fullName)) return null;
-    var args = settings.arguments ?? query ?? const {};
     if (pathName == fullName) {
+      var args = settings.arguments ?? query ?? const {};
       return NopRouteBuilder(
           route: this,
           settings: settings.copyWith(name: pathName, arguments: args));
@@ -130,6 +128,7 @@ class NopRoute {
       if (route != null) return route;
     }
 
+    var args = settings.arguments ?? query ?? const {};
     return NopRouteBuilder(
         route: this,
         settings: settings.copyWith(name: pathName, arguments: args));
@@ -225,272 +224,4 @@ abstract class NavigationActions {
       {Object? arguments, R? result});
   Future<T?> pushReplacementNamed<T, R>(BuildContext? context, String name,
       {Object? arguments, R? result});
-}
-
-class NopPageRoute<T> extends MaterialPageRoute<T> {
-  NopPageRoute({
-    required WidgetBuilder builder,
-    RouteSettings? settings,
-    bool maintainState = true,
-    bool fullscreenDialog = false,
-  }) : super(
-          builder: builder,
-          settings: settings,
-          maintainState: maintainState,
-          fullscreenDialog: fullscreenDialog,
-        );
-
-  static final rootS = Expando();
-  final currentRoute = <Type, dynamic>{};
-
-  D? getType<D extends Object>() =>
-      currentRoute[D] as D? ?? (currentRoute[D] = rootS[D] as D?);
-  D? getCurrentType<D>() => currentRoute[D] as D?;
-
-  void setType<D>(D value, {bool root = true}) {
-    currentRoute[D] = value;
-    if (root) {
-      rootS[D] = true;
-    }
-  }
-}
-
-class NavObserver extends NavigatorObserver {
-  OverlayState? get overlay => navigator?.overlay;
-
-  RouteDependences? get currentDeps => _routes.isNotEmpty ? _routes.last : null;
-
-  bool containsKey(Route key) =>
-      _routes.any((element) => element._route == key);
-
-  RouteDependences? getRoutes(Route key) {
-    final it = _routes.reversed;
-    for (var item in it) {
-      if (item._route == key) return item;
-    }
-    return null;
-  }
-
-  final _routes = <RouteDependences>[];
-
-  void didPopOrRemove(Route route, Route? previousRoute) {
-    final current = route.isCurrent ? _routes.removeLast() : getRoutes(route);
-    assert(current?._route == route &&
-        (previousRoute == null ||
-            getRoutes(previousRoute) == current?._parent));
-  }
-
-  @override
-  void didPop(Route route, Route? previousRoute) {
-    didPopOrRemove(route, previousRoute);
-    Log.w('pop: ${route.settings.name}');
-  }
-
-  @override
-  void didPush(Route route, Route? previousRoute) {
-    assert(!containsKey(route));
-    RouteDependences? parent;
-    if (previousRoute != null) {
-      parent = getRoutes(previousRoute);
-    }
-    final currentBucker = RouteDependences(route, parent);
-    Log.w('push: ${route.settings.name}');
-    _routes.add(currentBucker);
-  }
-
-  @override
-  void didRemove(Route route, Route? previousRoute) {
-    didPopOrRemove(route, previousRoute);
-    Log.w('remove: ${route.settings.name}');
-  }
-
-  @override
-  void didReplace({Route? newRoute, Route? oldRoute}) {
-    assert(newRoute == null || !containsKey(newRoute));
-    assert(oldRoute != null && containsKey(oldRoute));
-    final current = getRoutes(oldRoute!);
-    current?._setRoute(newRoute!);
-    Log.w('replace: ${newRoute?.settings.name}  ${oldRoute.settings.name}');
-  }
-}
-
-mixin GetTypePointers {
-  final _pointers = HashMap<Type, NopListener>();
-  NopListener? getParentType<T>({bool shared = true});
-  bool get isGlobal => false;
-
-  NopListener getType<T>({bool shared = true}) {
-    var listener = _pointers[T];
-    if (listener == null && (shared || isGlobal)) {
-      listener = getParentType<T>(shared: shared);
-    }
-
-    if (listener != null) {
-      return listener;
-    }
-    final data = Nav.get<T>()();
-    if (data is NopLifeCycle) {
-      data.init();
-    }
-    return _pointers[T] = NopListener(data, () => _pointers.remove(T));
-  }
-}
-
-class RouteDependences with GetTypePointers {
-  RouteDependences(this._route, this._parent) {
-    _init();
-  }
-
-  Route _route;
-  final RouteDependences? _parent;
-
-  void _setRoute(Route newRoute) {
-    if (_route == newRoute) return;
-    _route = newRoute;
-    _init();
-  }
-
-  Route get route => _route;
-
-  void _init() {
-    final local = _route;
-    _route.popped.then((value) {
-      if (local != _route) return;
-      _dispose();
-    });
-  }
-
-  void _dispose() {
-    assert(_pointers.isEmpty, '_pointers 不为空');
-  }
-
-  @override
-  NopListener? getParentType<T>({bool shared = true}) =>
-      _parent?.getType<T>(shared: shared);
-}
-
-class NopListener {
-  NopListener(this.data, this.onRemove);
-  final dynamic data;
-  final Set<Object> listener = {};
-  late final isNopLife = data is NopLifeCycle;
-
-  final void Function() onRemove;
-
-  bool _secheduled = false;
-
-  void remove(Object key) {
-    listener.remove(key);
-    if (listener.isEmpty && isNopLife) {
-      if (_secheduled) return;
-      scheduleMicrotask(() {
-        _secheduled = false;
-        if (listener.isEmpty) {
-          onRemove();
-          (data as NopLifeCycle).dispose();
-        }
-      });
-      _secheduled = true;
-    }
-  }
-
-  void add(Object key) {
-    listener.add(key);
-  }
-}
-
-typedef NopWidgetBuilder = Widget Function(BuildContext context, Widget? child);
-
-class Nop extends StatefulWidget {
-  const Nop({
-    Key? key,
-    this.child,
-    this.builder,
-    this.preRun,
-    this.builders,
-  })  : assert(child != null || builder != null),
-        super(key: key);
-
-  final Widget? child;
-  final void Function(T? Function<T>() preInit)? preRun;
-  final NopWidgetBuilder? builder;
-  final List<NopWidgetBuilder>? builders;
-
-  @override
-  State<Nop> createState() => _NopState();
-
-  static T of<T>(BuildContext context) {
-    return maybyOf(context)!;
-  }
-
-  static T? maybyOf<T>(BuildContext context) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
-    return nop?.state.getType<T>();
-  }
-}
-
-mixin NopLifeCycle {
-  void init();
-  void dispose();
-}
-
-class _NopState extends State<Nop> {
-  final _caches = HashMap<Type, NopListener>();
-
-  T getType<T>({bool shared = true}) {
-    var listener = _caches[T];
-    if (listener == null) {
-      listener = Nav.getType<T>(shared: shared);
-
-      listener.add(this);
-      _caches[T] = listener;
-    }
-    return listener.data;
-  }
-
-  @override
-  void dispose() {
-    for (var item in _caches.values) {
-      item.remove(this);
-    }
-    _caches.clear();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    if (widget.preRun != null) {
-      widget.preRun!(getType);
-    }
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Widget? child = widget.child;
-    if (widget.builder != null) {
-      child = widget.builder!(context, child);
-    }
-    final builders = widget.builders;
-    if (builders != null && builders.isNotEmpty) {
-      for (var build in builders) {
-        child = build(context, child);
-      }
-    }
-    return _NopScoop(child: child!, state: this);
-  }
-}
-
-class _NopScoop extends InheritedWidget {
-  const _NopScoop({
-    Key? key,
-    required Widget child,
-    required this.state,
-  }) : super(key: key, child: child);
-  final _NopState state;
-
-  @override
-  bool updateShouldNotify(covariant InheritedWidget oldWidget) {
-    return false;
-  }
 }
