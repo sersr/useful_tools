@@ -84,8 +84,7 @@ class _NopState<C> extends State<Nop<C>> {
 
     if (listener == null) {
       listener = Nav.getType<T>(context, shared: shared);
-      listener.add(this);
-      _caches[T] = listener;
+      _setListener<T>(listener);
     }
 
     assert(shared || Nav.isCurrent<T>(), Log.e(_getCacheStack[T]));
@@ -104,8 +103,7 @@ class _NopState<C> extends State<Nop<C>> {
         }
       }
       if (listener != null) {
-        listener.add(this);
-        _caches[T] = listener;
+        _setListener<T>(listener);
       }
     }
     return listener;
@@ -133,8 +131,13 @@ class _NopState<C> extends State<Nop<C>> {
       if (data is NopLifeCycle) {
         data.init();
       }
-      _caches[C] = listener;
+      _setListener<C>(listener);
     }
+  }
+
+  void _setListener<T>(NopListener listener) {
+    listener.add(this);
+    _caches[T] = listener;
   }
 
   void update() {
