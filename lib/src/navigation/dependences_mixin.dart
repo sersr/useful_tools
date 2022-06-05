@@ -64,13 +64,24 @@ mixin GetTypePointers {
 mixin NopLifeCycle {
   void init();
   void dispose();
+
+  static void autoDispse(Object lifeCycle) {
+    if (lifeCycle is NopLifeCycle) {
+      lifeCycle.dispose();
+    } else if (lifeCycle is ChangeNotifier) {
+      lifeCycle.dispose();
+    } else {
+      try {
+        (lifeCycle as dynamic).dispose();
+      } catch (_) {}
+    }
+  }
 }
 
 class NopListener {
   NopListener(this.data, this.onRemove);
   final dynamic data;
   final Set<Object> listener = {};
-  late final isNopLife = data is NopLifeCycle;
 
   final void Function() onRemove;
 
@@ -84,7 +95,7 @@ class NopListener {
         _secheduled = false;
         if (listener.isEmpty) {
           onRemove();
-          if (isNopLife) (data as NopLifeCycle).dispose();
+          NopLifeCycle.autoDispse(data);
         }
       });
       _secheduled = true;
