@@ -89,6 +89,11 @@ class NopListener {
 
   void remove(Object key) {
     listener.remove(key);
+    final local = data;
+    if (local is Listenable) {
+      final _update = _updateList[key];
+      if (_update != null) local.removeListener(_update);
+    }
     if (listener.isEmpty) {
       if (_secheduled) return;
       scheduleMicrotask(() {
@@ -102,7 +107,20 @@ class NopListener {
     }
   }
 
+  late final _updateList = <Object, VoidCallback>{};
+
   void add(Object key) {
     listener.add(key);
+    final local = data;
+    if (local is Listenable) {
+      if (!_updateList.containsKey(key)) {
+        final listener = _updateList[key] = () {
+          try {
+            (key as dynamic).update();
+          } catch (_) {}
+        };
+        local.addListener(listener);
+      }
+    }
   }
 }
