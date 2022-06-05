@@ -146,7 +146,7 @@ Widget _buildMaterialDialogTransitions(
 
 extension Content on BuildContext {
   bool get isDarkMode {
-    return MediaQuery.of(this).platformBrightness == ThemeMode.dark;
+    return Theme.of(this).brightness == Brightness.dark;
   }
 }
 
