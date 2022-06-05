@@ -40,11 +40,11 @@ class NavGlobal extends NavInterface with GetTypePointers {
   }
 
   void put<T>(BuildFactory<T> factory) {
-    _factorys[T] = Left(factory);
+    _factorys[T] = Left<BuildFactory<T>, BuildContextFactory<T>>(factory);
   }
 
   void putContext<T>(BuildContextFactory<T> factory) {
-    _factorys[T] = Right(factory);
+    _factorys[T] = Right<BuildFactory<T>, BuildContextFactory<T>>(factory);
   }
 
   Either<BuildFactory<T>, BuildContextFactory<T>> get<T>() {
@@ -87,7 +87,7 @@ class NavObserver extends NavigatorObserver {
   @override
   void didPop(Route route, Route? previousRoute) {
     didPopOrRemove(route, previousRoute);
-    Log.w('pop: ${route.settings.name}');
+    assert(Log.i('pop: ${route.settings.name}'));
   }
 
   @override
@@ -98,14 +98,14 @@ class NavObserver extends NavigatorObserver {
       parent = getRoutes(previousRoute);
     }
     final currentBucker = RouteDependences(route, parent);
-    Log.w('push: ${route.settings.name}');
+    assert(Log.i('push: ${route.settings.name}'));
     _routes.add(currentBucker);
   }
 
   @override
   void didRemove(Route route, Route? previousRoute) {
     didPopOrRemove(route, previousRoute);
-    Log.w('remove: ${route.settings.name}');
+    assert(Log.i('remove: ${route.settings.name}'));
   }
 
   @override
@@ -114,7 +114,8 @@ class NavObserver extends NavigatorObserver {
     assert(oldRoute != null && containsKey(oldRoute));
     final current = getRoutes(oldRoute!);
     current?.route = newRoute!;
-    Log.w('replace: ${newRoute?.settings.name}  ${oldRoute.settings.name}');
+    assert(Log.i(
+        'replace: ${newRoute?.settings.name}  ${oldRoute.settings.name}'));
   }
 }
 
