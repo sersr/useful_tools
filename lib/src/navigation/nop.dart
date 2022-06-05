@@ -16,7 +16,7 @@ extension GetType on BuildContext {
   }
 
   T? getTypeOr<T>({bool shared = true}) {
-    return Nop.maybyOf(this, shared: shared);
+    return Nop.maybeOf(this, shared: shared);
   }
 }
 
@@ -53,12 +53,12 @@ class Nop<C> extends StatefulWidget {
     return nop.state.getType<T>(context, shared: shared);
   }
 
-  static T? maybyOf<T>(BuildContext context, {bool shared = true}) {
+  static T? maybeOf<T>(BuildContext context, {bool shared = true}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
     return nop?.state.getType<T>(context, shared: shared);
   }
 
-  static _NopState? _maybyOf(BuildContext context) {
+  static _NopState? _maybeOf(BuildContext context) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
     return nop?.state;
   }
@@ -98,7 +98,7 @@ class _NopState<C> extends State<Nop<C>> {
     if (listener == null) {
       listener = _create<T>();
       if (listener == null) {
-        final parentState = Nop._maybyOf(this.context);
+        final parentState = Nop._maybeOf(this.context);
         if (parentState != null) {
           listener = parentState._createOrFromParent<T>(context);
         }
@@ -135,6 +135,10 @@ class _NopState<C> extends State<Nop<C>> {
       }
       _caches[C] = listener;
     }
+  }
+
+  void update() {
+    if (mounted) setState(() {});
   }
 
   @override
