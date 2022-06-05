@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:collection/collection.dart';
 
 typedef ShouldNotify<T, D extends ChangeNotifier> = T Function(D parent);
 
@@ -38,7 +39,7 @@ class ChangeNotifierSelector<T, D extends ChangeNotifier> extends ChangeNotifier
   void _listener() {
     final value = notifyValue(parent);
 
-    if (_value != value) {
+    if (!const DeepCollectionEquality().equals(_value, value)) {
       _value = value;
       notifyListeners();
     }
