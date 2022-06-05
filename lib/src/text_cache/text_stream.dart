@@ -65,7 +65,6 @@ class TextCache {
 
     final fontSize = style.fontSize!;
     final words = width ~/ fontSize;
-    final _oneHalf = fontSize * 1.6;
 
     final linesText = <TextPainter>[];
 
@@ -102,7 +101,7 @@ class TextCache {
 
           await idleWait;
 
-          if (_t.height > _oneHalf) {
+          if (_t.computeLineMetrics().length > 1) {
             final textPosition = _t.getPositionForOffset(positionOffset);
             var endOffset = textPosition.offset;
             var realLines = s.substring(0, endOffset).characters;
@@ -113,6 +112,9 @@ class TextCache {
             if (atEnd) {
               realLines = spc.getRange(0, math.min(spc.length, realLength + 3));
             }
+
+            if (realLines.isEmpty) break;
+
             end = start + realLines.length;
             break;
           }
