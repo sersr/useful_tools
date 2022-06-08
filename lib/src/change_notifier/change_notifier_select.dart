@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 
@@ -21,19 +23,25 @@ class ChangeNotifierSelector<T, D extends ChangeNotifier> extends ChangeNotifier
   @override
   void addListener(VoidCallback listener) {
     super.addListener(listener);
-    if (!_add) {
+    if (!_add && hasListeners) {
       _add = true;
       parent.addListener(_listener);
     }
   }
 
+  bool _scheduled = false;
   @override
   void removeListener(VoidCallback listener) {
     super.removeListener(listener);
-    if (!hasListeners) {
-      _add = false;
-      parent.removeListener(_listener);
-    }
+    if (_scheduled || hasListeners) return;
+    scheduleMicrotask(() {
+      _scheduled = false;
+      if (!hasListeners) {
+        _add = false;
+        parent.removeListener(_listener);
+      }
+    });
+    _scheduled = true;
   }
 
   void _listener() {

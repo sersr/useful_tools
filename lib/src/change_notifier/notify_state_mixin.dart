@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 mixin NotifyStateMixin {
@@ -50,13 +52,20 @@ mixin NotifyStateOnChangeNotifier on ChangeNotifier {
     }
   }
 
+  bool _scheduled = false;
+
   @override
   void removeListener(VoidCallback listener) {
     super.removeListener(listener);
-    if (!hasListeners && _added) {
-      _added = false;
-      _handle?._removeListener(_listen);
-    }
+    if (_scheduled || hasListeners) return;
+    scheduleMicrotask(() {
+      _scheduled = false;
+      if (!hasListeners && _added) {
+        _added = false;
+        _handle?._removeListener(_listen);
+      }
+    });
+    _scheduled = true;
   }
 
   @override
