@@ -124,6 +124,16 @@ extension NavigatorExt on NavInterface {
     return action.result;
   }
 
+  Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
+    String routeName,
+    bool Function(Route<dynamic>) predicate, {
+    Object? arguments,
+  }) {
+    final action = NavPushReplaceUntil<T>(routeName, predicate, arguments);
+    _navDelegate(action);
+    return action.result;
+  }
+
   Future<T?> pushReplacementNamed<T extends Object?, R extends Object?>(
     String routeName, {
     R? result,
@@ -184,6 +194,42 @@ extension NavigatorExt on NavInterface {
       {required Route<dynamic> anchorRoute, required Route<T> newRoute}) {
     final action = NavReplaceBelowAction(anchorRoute, newRoute);
     _navDelegate(action);
+  }
+
+  Future<String?> restorablePushNamed(String routeName, {Object? arguments}) {
+    final action = NavRePushNamedAction(routeName, arguments);
+    _navDelegate(action);
+    return action.result;
+  }
+
+  Future<String?> restorablePopAndPushNamed<T extends Object>(
+    String routeName, {
+    Object? arguments,
+    T? result,
+  }) {
+    final action = NavRePopPushNamedAction(routeName, arguments, result);
+    _navDelegate(action);
+    return action.result;
+  }
+
+  Future<String?> restorablePushNamedAndRemoveUntil<T extends Object?>(
+    String routeName,
+    bool Function(Route<dynamic>) predicate, {
+    Object? arguments,
+  }) {
+    final action = NavRePushNamedUntilAction(routeName, arguments, predicate);
+    _navDelegate(action);
+    return action.result;
+  }
+
+  Future<String?> restorablePushReplacementNamed<T extends Object>(
+    String routeName, {
+    T? result,
+    Object? arguments,
+  }) {
+    final action = NavRePushNamedReplaceAction(routeName, arguments, result);
+    _navDelegate(action);
+    return action.result;
   }
 }
 

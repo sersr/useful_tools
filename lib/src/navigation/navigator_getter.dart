@@ -8,11 +8,12 @@ final _navToken = Object();
 
 abstract class NavAction {
   void action(NavigatorState state);
+  void onFailed() {}
 }
 
 mixin NaviActionResult<T> on NavAction {
   Future<T?> get result => _completer.future;
-  final _completer = Completer<T?>();
+  final _completer = Completer<T?>.sync();
 
   @protected
   void complete([T? value]) {
@@ -22,6 +23,11 @@ mixin NaviActionResult<T> on NavAction {
   }
 
   void completeError([_]) {
+    complete();
+  }
+
+  @override
+  void onFailed() {
     complete();
   }
 }
@@ -44,6 +50,73 @@ class NavPushNamedAction<T> extends NavAction with NaviActionResult<T> {
   void action(NavigatorState state) {
     state
         .pushNamed<T>(routeName, arguments: arguments)
+        .then(complete, onError: completeError);
+  }
+}
+
+class NavRePushNamedAction extends NavAction with NaviActionResult<String> {
+  NavRePushNamedAction(this.routeName, this.arguments);
+  final String routeName;
+  final Object? arguments;
+  @override
+  void action(NavigatorState state) {
+    final id = state.restorablePushNamed(routeName, arguments: arguments);
+    complete(id);
+  }
+}
+
+class NavRePopPushNamedAction<R> extends NavAction
+    with NaviActionResult<String> {
+  NavRePopPushNamedAction(this.routeName, this.arguments, this.popResult);
+  final String routeName;
+  final Object? arguments;
+  final R? popResult;
+  @override
+  void action(NavigatorState state) {
+    final id = state.restorablePopAndPushNamed(routeName,
+        result: popResult, arguments: arguments);
+    complete(id);
+  }
+}
+
+class NavRePushNamedUntilAction extends NavAction
+    with NaviActionResult<String> {
+  NavRePushNamedUntilAction(this.routeName, this.arguments, this.predicate);
+  final String routeName;
+  final Object? arguments;
+  final bool Function(Route<dynamic>) predicate;
+  @override
+  void action(NavigatorState state) {
+    final id = state.restorablePushNamedAndRemoveUntil(routeName, predicate,
+        arguments: arguments);
+    complete(id);
+  }
+}
+
+class NavRePushNamedReplaceAction<R> extends NavAction
+    with NaviActionResult<String> {
+  NavRePushNamedReplaceAction(this.routeName, this.arguments, this.popResult);
+  final String routeName;
+  final Object? arguments;
+  final R? popResult;
+  @override
+  void action(NavigatorState state) {
+    final id = state.restorablePushReplacementNamed(routeName,
+        result: popResult, arguments: arguments);
+    complete(id);
+  }
+}
+
+class NavPushReplaceUntil<T> extends NavAction with NaviActionResult<T> {
+  NavPushReplaceUntil(this.routeName, this.predicate, this.arguments);
+  final String routeName;
+  final bool Function(Route<dynamic>) predicate;
+  final Object? arguments;
+
+  @override
+  void action(NavigatorState state) {
+    state
+        .pushNamedAndRemoveUntil<T>(routeName, predicate, arguments: arguments)
         .then(complete, onError: completeError);
   }
 }
@@ -177,5 +250,10 @@ class NavigatorDelegate<T> with StateAsyncGetter<NavigatorState> {
   FutureOr<void> initRun(NavigatorState state) {
     assert(state.mounted);
     action.action(state);
+  }
+
+  @override
+  void onFailed() {
+    action.onFailed();
   }
 }

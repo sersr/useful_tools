@@ -18,9 +18,10 @@ mixin StateAsyncGetter<T extends State> {
   T? getState();
 
   Future<void> init() {
-    return key.tqGlobal.run(() => waitState(initRun, getState));
+    return key.tqGlobal.run(() => waitState(initRun, getState, onFailed));
   }
 
+  void onFailed() {}
   FutureOr<void> initRun(T state) {}
 }
 typedef StateGetter<T> = T? Function();
@@ -29,8 +30,8 @@ typedef StateGetter<T> = T? Function();
 /// 确保初始化时，`state.mounted == true`
 ///
 /// 通过`throw`退出循环
-FutureOr<void> waitState<T extends State>(
-    FutureOr<void> Function(T) run, StateGetter<T> stateGetter) async {
+FutureOr<void> waitState<T extends State>(FutureOr<void> Function(T) run,
+    StateGetter<T> stateGetter, VoidCallback onFailed) async {
   Timer? timer;
   assert(() {
     timer = Timer(const Duration(seconds: 10), () {
@@ -52,8 +53,10 @@ FutureOr<void> waitState<T extends State>(
       }
     } on OverlayGetterError catch (e) {
       assert(Log.i(e));
+      onFailed();
       break;
     } catch (e) {
+      onFailed();
       Log.e('unKnownError: $e');
       break;
     }
