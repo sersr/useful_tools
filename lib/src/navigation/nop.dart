@@ -1,14 +1,12 @@
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
-import 'package:nop/nop.dart';
+import 'package:nop/utils.dart';
+import 'package:useful_tools/useful_tools.dart';
 
 import 'dependences_mixin.dart';
-import 'navigator_observer.dart';
-
-typedef NopWidgetBuilder = Widget Function(BuildContext context, Widget child);
-typedef NopPreInitCallback = void Function(
-    T? Function<T>({bool shared}) preInit);
+import 'nop_pre_init.dart';
+import 'typedef.dart';
 
 extension GetType on BuildContext {
   T getType<T>({bool shared = true}) {
@@ -30,6 +28,7 @@ class Nop<C> extends StatefulWidget {
     this.builders,
     this.create,
   })  : value = null,
+        isPage = false,
         super(key: key);
   const Nop.value({
     Key? key,
@@ -39,6 +38,17 @@ class Nop<C> extends StatefulWidget {
     this.preRun,
     this.builders,
   })  : create = null,
+        isPage = false,
+        super(key: key);
+  const Nop.page({
+    Key? key,
+    required this.child,
+    this.builder,
+    this.preRun,
+    this.builders,
+  })  : create = null,
+        isPage = true,
+        value = null,
         super(key: key);
 
   final Widget child;
@@ -47,6 +57,7 @@ class Nop<C> extends StatefulWidget {
   final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
   final C? value;
+  final bool isPage;
 
   static T of<T>(BuildContext context, {bool shared = true}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>()!;
@@ -67,41 +78,50 @@ class Nop<C> extends StatefulWidget {
   State<Nop<C>> createState() => _NopState<C>();
 }
 
-class _NopState<C> extends State<Nop<C>> {
+class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
   final _caches = HashMap<Type, NopListener>();
-  late final _getCacheStack = <Type, Set<String>>{};
+  late final nopDependences = NopDependences();
 
   T getType<T>(BuildContext context, {bool shared = true}) {
-    var listener = _createOrFromParent<T>(context);
-
-    assert(() {
-      if (listener != null) {
-        final stack = _getCacheStack.putIfAbsent(T, () => <String>{});
-        stack.add('shared: $shared > ' + Log.getLineFromStack(position: 4));
-      }
-      return true;
-    }());
+    var listener = _getOrCreateCurrent<T>();
 
     if (listener == null) {
-      listener = Nav.getType<T>(context, shared: shared);
+      listener = getOrCreateDependence<T>(context, shared: shared);
       _setListener<T>(listener);
     }
 
-    assert(shared || Nav.isCurrent<T>(), Log.e(_getCacheStack[T]));
+    assert(Log.i('get $T', position: 3));
+
     return listener.data;
   }
 
-  NopListener? _createOrFromParent<T>(BuildContext context) {
+  NopListener getOrCreateDependence<T>(BuildContext context,
+      {bool shared = true}) {
+    // 全局查找
+    var listener = currentDependences?.findTypeArg(T, context, shared: shared);
+
+    // 页面查找或创建
+    final dependences = getPageNopState(context)?.nopDependences;
+    listener ??= dependences?.getTypeAliasArg(T, context, shared: shared);
+
+    assert(isPage ||
+        nopDependences.parent == null && nopDependences.child == null);
+
+    return listener ?? createLocalListener<T>(context);
+  }
+
+  @pragma('vm:prefer-inline')
+  NopListener createLocalListener<T>(BuildContext context) {
+    assert(Log.w('在本地创建 $T 对象'));
+
+    return GetTypePointers.createArg(T, context);
+  }
+
+  NopListener? _getOrCreateCurrent<T>() {
     var listener = _caches[T];
 
     if (listener == null) {
       listener = _create<T>();
-      if (listener == null) {
-        final parentState = Nop._maybeOf(this.context);
-        if (parentState != null) {
-          listener = parentState._createOrFromParent<T>(context);
-        }
-      }
       if (listener != null) {
         _setListener<T>(listener);
       }
@@ -114,19 +134,26 @@ class _NopState<C> extends State<Nop<C>> {
       final data = widget.create!(context);
       if (data != null) {
         if (data is NopLifeCycle) data.init();
-        return NopListener(data, _empty);
+        return NopListener(data);
       }
     }
     return null;
   }
 
-  static _empty() {}
-
   @override
   void initState() {
     super.initState();
+    isPage = widget.isPage;
+    if (isPage) {
+      push(nopDependences);
+    }
+    _initState();
+  }
+
+  bool isPage = false;
+  void _initState() {
     if (widget.value != null) {
-      final listener = NopListener(widget.value!, _empty);
+      final listener = NopListener(widget.value!);
       final data = listener.data;
       if (data is NopLifeCycle) {
         data.init();
@@ -135,22 +162,60 @@ class _NopState<C> extends State<Nop<C>> {
     }
   }
 
+  static NopDependences? currentDependences;
+
+  static void push(NopDependences dependences) {
+    assert(currentDependences == null || currentDependences!.child == null);
+    assert(dependences.parent == null && dependences.child == null);
+    currentDependences?.updateChild(dependences);
+    currentDependences = dependences;
+  }
+
+  static void pop(NopDependences dependences) {
+    if (dependences == currentDependences) {
+      assert(dependences.child == null);
+      currentDependences = dependences.parent;
+    }
+    dependences.removeChild();
+  }
+
+  _NopState? getPageNopState(BuildContext context) {
+    _NopState? state;
+    if (isPage) {
+      state = this;
+    } else {
+      final parentState = Nop._maybeOf(context);
+      if (parentState != null) {
+        state = getPageNopState(parentState.context);
+      }
+    }
+    return state;
+  }
+
   void _setListener<T>(NopListener listener) {
     listener.add(this);
     _caches[T] = listener;
   }
 
+  @override
   void update() {
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _dispose();
+    if (isPage) {
+      pop(nopDependences);
+    }
+    super.dispose();
+  }
+
+  void _dispose() {
     for (var item in _caches.values) {
       item.remove(this);
     }
     _caches.clear();
-    super.dispose();
   }
 
   @override
@@ -160,57 +225,14 @@ class _NopState<C> extends State<Nop<C>> {
       preRun: widget.preRun,
       builder: widget.builder,
       builders: widget.builders,
+      init: _init,
     );
 
     return _NopScoop(child: child, state: this);
   }
-}
 
-/// 统一初始化对象
-class NopPreInit extends StatefulWidget {
-  const NopPreInit({
-    Key? key,
-    this.preRun,
-    this.builder,
-    this.builders,
-    required this.child,
-  }) : super(key: key);
-
-  final NopPreInitCallback? preRun;
-  final NopWidgetBuilder? builder;
-  final List<NopWidgetBuilder>? builders;
-
-  final Widget child;
-
-  @override
-  State<NopPreInit> createState() => _NopPreInitState();
-}
-
-class _NopPreInitState extends State<NopPreInit> {
-  @override
-  void initState() {
-    if (widget.preRun != null) {
-      widget.preRun!(_initFirst);
-    }
-    super.initState();
-  }
-
-  T _initFirst<T>({bool shared = true}) => Nop.of<T>(context, shared: shared);
-
-  @override
-  Widget build(BuildContext context) {
-    Widget child = widget.child;
-    if (widget.builder != null) {
-      child = widget.builder!(context, child);
-    }
-    final builders = widget.builders;
-
-    if (builders != null && builders.isNotEmpty) {
-      for (var build in builders) {
-        child = build(context, child);
-      }
-    }
-    return child;
+  static T _init<T>(context, {bool shared = true}) {
+    return Nop.of<T>(context, shared: shared);
   }
 }
 

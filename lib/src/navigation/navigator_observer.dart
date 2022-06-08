@@ -5,9 +5,7 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:nop/nop.dart';
 
-import 'dependences_mixin.dart';
 import 'navigator_getter.dart';
-import 'route_dependences.dart';
 
 class NavigatorBase {
   NavigatorBase(this.getNavigator);
@@ -18,7 +16,7 @@ class NavigatorBase {
 
 abstract class NavInterface {}
 
-class NavGlobal extends NavInterface with GetTypePointers {
+class NavGlobal extends NavInterface {
   NavGlobal._();
   static final _instance = NavGlobal._();
   factory NavGlobal() => _instance;
@@ -52,70 +50,55 @@ class NavGlobal extends NavInterface with GetTypePointers {
     return _factorys[T] as Either<BuildFactory<T>, BuildContextFactory<T>>;
   }
 
-  RouteDependences? get currentDeps => observer.currentDeps;
+  Either<BuildFactory, BuildContextFactory> getArg(Type t) {
+    assert(_factorys.containsKey(t), '请先使用 Nav.put<$t>()');
+    return _factorys[t] as Either<BuildFactory, BuildContextFactory>;
+  }
 
-  @override
-  bool get isGlobal => true;
+  final _alias = <Type, Type>{};
 
-  @override
-  GetTypePointers? get parent => currentDeps;
+  void addType(Type parent, Type child) {
+    _alias[parent] = child;
+  }
+
+  /// 子类可以转化成父类
+  void add<P, C extends P>() {
+    _alias[P] = C; // 可以根据父类类型获取到子类对象
+  }
+
+  Type getAlias(Type t) {
+    return _alias[t] ?? t;
+  }
+
+  void addAliasAll(Iterable<Type> parents, Type child) {
+    for (var item in parents) {
+      addType(item, child);
+    }
+  }
 }
 
 class NavObserver extends NavigatorObserver {
   OverlayState? get overlay => navigator?.overlay;
 
-  RouteDependences? get currentDeps => _routes.isNotEmpty ? _routes.last : null;
-
-  bool containsKey(Route key) => _routes.any((element) => element.route == key);
-
-  RouteDependences? getRoutes(Route key) {
-    final it = _routes.reversed;
-    for (var item in it) {
-      if (item.route == key) return item;
-    }
-    return null;
-  }
-
-  final _routes = <RouteDependences>[];
-
-  void didPopOrRemove(Route route, Route? previousRoute) {
-    final current = route.isCurrent ? _routes.removeLast() : getRoutes(route);
-    assert(current?.route == route &&
-        (previousRoute == null || getRoutes(previousRoute) == current?.parent));
-  }
-
   @override
   void didPop(Route route, Route? previousRoute) {
-    didPopOrRemove(route, previousRoute);
     assert(Log.i('pop: ${route.settings.name}'));
   }
 
   @override
   void didPush(Route route, Route? previousRoute) {
-    assert(!containsKey(route));
-    RouteDependences? parent;
-    if (previousRoute != null) {
-      parent = getRoutes(previousRoute);
-    }
-    final currentBucker = RouteDependences(route, parent);
     assert(Log.i('push: ${route.settings.name}'));
-    _routes.add(currentBucker);
   }
 
   @override
   void didRemove(Route route, Route? previousRoute) {
-    didPopOrRemove(route, previousRoute);
     assert(Log.i('remove: ${route.settings.name}'));
   }
 
   @override
   void didReplace({Route? newRoute, Route? oldRoute}) {
-    assert(newRoute == null || !containsKey(newRoute));
-    assert(oldRoute != null && containsKey(oldRoute));
-    final current = getRoutes(oldRoute!);
-    current?.route = newRoute!;
     assert(Log.i(
-        'replace: ${newRoute?.settings.name}  ${oldRoute.settings.name}'));
+        'replace: ${newRoute?.settings.name}  ${oldRoute?.settings.name}'));
   }
 }
 
