@@ -18,7 +18,7 @@ mixin StateAsyncGetter<T extends State> {
   T? getState();
 
   Future<void> init() {
-    return EventQueue.runOne(key, () => waitState(initRun, getState));
+    return key.tqGlobal.run(() => waitState(initRun, getState));
   }
 
   FutureOr<void> initRun(T state) {}
