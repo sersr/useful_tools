@@ -21,6 +21,10 @@ mixin StateAsyncGetter<T extends State> {
     return key.tqGlobal.run(() => waitState(initRun, getState, onFailed));
   }
 
+  Future<void> runWith(void Function(T state) run, void Function() onFailed) {
+    return key.tqGlobal.run(() => waitState(run, getState, onFailed));
+  }
+
   void onFailed() {}
   FutureOr<void> initRun(T state) {}
 }

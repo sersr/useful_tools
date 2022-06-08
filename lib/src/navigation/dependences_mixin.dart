@@ -106,16 +106,17 @@ mixin GetTypePointers {
 typedef _Factory = Either<BuildFactory, BuildContextFactory> Function(Type t);
 mixin NopLifeCycle {
   void init();
-  void dispose();
+  void nopDispose();
 
   static void autoDispse(Object lifeCycle) {
+    assert(Log.w('dispse: ${lifeCycle.runtimeType}'));
     if (lifeCycle is NopLifeCycle) {
-      lifeCycle.dispose();
+      lifeCycle.nopDispose();
     } else if (lifeCycle is ChangeNotifier) {
       lifeCycle.dispose();
     } else {
       try {
-        (lifeCycle as dynamic).dispose();
+        (lifeCycle as dynamic).nopDispose();
       } catch (_) {}
     }
   }
