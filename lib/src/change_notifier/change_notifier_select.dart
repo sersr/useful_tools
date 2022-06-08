@@ -29,19 +29,14 @@ class ChangeNotifierSelector<T, D extends ChangeNotifier> extends ChangeNotifier
     }
   }
 
-  bool _scheduled = false;
   @override
   void removeListener(VoidCallback listener) {
     super.removeListener(listener);
-    if (_scheduled || hasListeners) return;
-    scheduleMicrotask(() {
-      _scheduled = false;
-      if (!hasListeners) {
-        _add = false;
-        parent.removeListener(_listener);
-      }
-    });
-    _scheduled = true;
+    if (hasListeners) return;
+    if (!hasListeners) {
+      _add = false;
+      parent.removeListener(_listener);
+    }
   }
 
   void _listener() {
@@ -49,11 +44,17 @@ class ChangeNotifierSelector<T, D extends ChangeNotifier> extends ChangeNotifier
 
     if (!const DeepCollectionEquality().equals(_value, value)) {
       _value = value;
-      notifyListeners();
+      if (hasListeners) notifyListeners();
     }
   }
 
   T _value;
+
+  @override
+  void dispose() {
+    parent.removeListener(_listener);
+    super.dispose();
+  }
 
   @override
   T get value => _value;

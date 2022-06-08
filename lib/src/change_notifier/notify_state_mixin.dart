@@ -33,7 +33,7 @@ mixin NotifyStateOnChangeNotifier on ChangeNotifier {
   }
 
   void _listen() {
-    if (_handle == null) return;
+    if (_handle == null && !hasListeners) return;
     final open = _handle!._notifier.value;
     if (open) {
       onOpen();
@@ -52,20 +52,14 @@ mixin NotifyStateOnChangeNotifier on ChangeNotifier {
     }
   }
 
-  bool _scheduled = false;
-
   @override
   void removeListener(VoidCallback listener) {
     super.removeListener(listener);
-    if (_scheduled || hasListeners) return;
-    scheduleMicrotask(() {
-      _scheduled = false;
-      if (!hasListeners && _added) {
-        _added = false;
-        _handle?._removeListener(_listen);
-      }
-    });
-    _scheduled = true;
+    if (hasListeners) return;
+    if (!hasListeners && _added) {
+      _added = false;
+      _handle?._removeListener(_listen);
+    }
   }
 
   @override
