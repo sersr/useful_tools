@@ -36,6 +36,7 @@ class Nop<C> extends StatefulWidget {
   })  : value = null,
         isPage = false,
         super(key: key);
+
   const Nop.value({
     Key? key,
     this.value,
@@ -46,6 +47,7 @@ class Nop<C> extends StatefulWidget {
   })  : create = null,
         isPage = false,
         super(key: key);
+
   const Nop.page({
     Key? key,
     required this.child,
@@ -64,6 +66,8 @@ class Nop<C> extends StatefulWidget {
   final C Function(BuildContext context)? create;
   final C? value;
   final bool isPage;
+
+  static bool print = false;
 
   static T of<T>(BuildContext context, {bool shared = true}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>()!;
@@ -96,31 +100,42 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
       _setListener<T>(listener);
     }
 
-    assert(Log.i('get $T', position: 3));
+    assert(!Nop.print || Log.i('get $T', position: 3));
 
     return listener.data;
   }
 
   NopListener getOrCreateDependence<T>(BuildContext context,
       {bool shared = true}) {
-    // 全局查找
-    var listener = currentDependences?.findTypeArg(T, context, shared: shared);
+    final dependences = getPageNopState(this)?.nopDependences;
 
-    // 页面查找或创建
-    final dependences = getPageNopState(context)?.nopDependences;
+    // 当前页面查找
+    NopListener? listener =
+        dependences?.findTypeArg(T, context, shared: shared);
+
+    if (listener == null && shared) {
+      // 页面链表查找
+      listener = currentDependences?.findTypeArg(T, context, shared: shared);
+      if (listener != null) {
+        dependences?.addListener(T, listener);
+      }
+    }
+    // 全局查找
+    listener ??= globalDependences.findTypeArg(T, context);
+    // 页面创建
     listener ??= dependences?.getTypeAliasArg(T, context, shared: shared);
 
     assert(isPage ||
         nopDependences.parent == null && nopDependences.child == null);
 
-    return listener ?? createLocalListener<T>(context);
+    return listener ?? createGlobalListener<T>(context);
   }
 
   @pragma('vm:prefer-inline')
-  NopListener createLocalListener<T>(BuildContext context) {
-    assert(Log.w('在本地创建 $T 对象'));
+  static NopListener createGlobalListener<T>(BuildContext context) {
+    assert(Log.w('在全局创建 $T 对象', position: 5));
 
-    return GetTypePointers.createArg(T, context);
+    return globalDependences.getTypeAliasArg(T, context);
   }
 
   NopListener? _getOrCreateCurrent<T>() {
@@ -146,6 +161,47 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     return null;
   }
 
+  static NopDependences? currentDependences;
+  static final globalDependences = NopDependences();
+
+  static void push(NopDependences dependences) {
+    assert(currentDependences == null || currentDependences!.child == null);
+    assert(dependences.parent == null && dependences.child == null);
+    currentDependences?.updateChild(dependences);
+    currentDependences = dependences;
+  }
+
+  static void pop(NopDependences dependences) {
+    if (dependences == currentDependences) {
+      assert(dependences.child == null);
+      currentDependences = dependences.parent;
+    }
+    dependences.removeChild();
+  }
+
+  static _NopState? getPageNopState(_NopState currentState) {
+    _NopState? state;
+    if (currentState.isPage) {
+      state = currentState;
+    } else {
+      final parentState = Nop._maybeOf(currentState.context);
+      if (parentState != null) {
+        state = getPageNopState(parentState);
+      }
+    }
+    return state;
+  }
+
+  void _setListener<T>(NopListener listener) {
+    listener.add(this);
+    _caches[T] = listener;
+  }
+
+  @override
+  void update() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -166,46 +222,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
       }
       _setListener<C>(listener);
     }
-  }
-
-  static NopDependences? currentDependences;
-
-  static void push(NopDependences dependences) {
-    assert(currentDependences == null || currentDependences!.child == null);
-    assert(dependences.parent == null && dependences.child == null);
-    currentDependences?.updateChild(dependences);
-    currentDependences = dependences;
-  }
-
-  static void pop(NopDependences dependences) {
-    if (dependences == currentDependences) {
-      assert(dependences.child == null);
-      currentDependences = dependences.parent;
-    }
-    dependences.removeChild();
-  }
-
-  _NopState? getPageNopState(BuildContext context) {
-    _NopState? state;
-    if (isPage) {
-      state = this;
-    } else {
-      final parentState = Nop._maybeOf(context);
-      if (parentState != null) {
-        state = getPageNopState(parentState.context);
-      }
-    }
-    return state;
-  }
-
-  void _setListener<T>(NopListener listener) {
-    listener.add(this);
-    _caches[T] = listener;
-  }
-
-  @override
-  void update() {
-    if (mounted) setState(() {});
   }
 
   @override

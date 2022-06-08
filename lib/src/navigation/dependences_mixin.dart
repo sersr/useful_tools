@@ -19,7 +19,7 @@ mixin GetTypePointers {
 
   NopListener getTypeAliasArg(Type t, BuildContext context,
       {bool shared = true}) {
-    return _getTypeArg(getAlias(t), context);
+    return _getTypeArg(getAlias(t), context, shared: shared);
   }
 
   /// shared == false, 不保存引用
@@ -38,14 +38,23 @@ mixin GetTypePointers {
         _pointers[t] = listener;
       }
     }
+    assert(listener == null ||
+        shared ||
+        Log.w('shared: $shared, listener != null,已使用 shared = true 创建过 $t 对象'));
     return listener;
   }
 
   NopListener _createListenerArg(Type t, BuildContext context,
       {bool shared = true}) {
     var listener = createArg(t, context);
+    assert(Log.w('create $t'));
     if (shared) _pointers[t] = listener; // 只有共享才会添加到共享域中
     return listener;
+  }
+
+  void addListener(Type t, NopListener listener) {
+    t = getAlias(t);
+    _pointers[t] = listener;
   }
 
   static NopListener createArg(Type t, BuildContext context) {
@@ -68,7 +77,7 @@ mixin GetTypePointers {
 
   static _Factory get _get {
     if (_factory != null) return _factory!;
-    assert(Log.w('使用自定义构建器，只初始化一次'));
+    assert(Log.w('使用构建器，只初始化一次'));
     return _factory ??= getFactory;
   }
 
