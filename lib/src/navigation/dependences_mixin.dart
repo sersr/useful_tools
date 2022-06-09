@@ -63,6 +63,9 @@ mixin GetTypePointers {
     _pointers[t] = listener;
   }
 
+  static NopListener Function(dynamic data) nopListenerCreater = _defaultCreate;
+  static NopListener _defaultCreate(dynamic data) => NopListenerDefault(data);
+
   static NopListener createArg(Type t, BuildContext context) {
     final factory = _get(t);
 
@@ -78,7 +81,7 @@ mixin GetTypePointers {
         Log.e('$t init error: $e\n$s', onlyDebug: false);
       }
     }
-    return NopListener(data);
+    return nopListenerCreater(data);
   }
 
   static Type Function(Type t) getAlias = Nav.getAlias;
@@ -139,17 +142,28 @@ mixin NopListenerUpdate {
   void update();
 }
 
-class NopListener {
+abstract class NopListener {
   NopListener(this.data);
   final dynamic data;
+  bool get isEmpty;
+
+  void remove(Object key);
+
+  void add(Object key);
+}
+
+class NopListenerDefault extends NopListener {
+  NopListenerDefault(dynamic data) : super(data);
   final Set<Object> _listener = {};
 
+  @override
   bool get isEmpty => _listener.isEmpty;
 
   bool _secheduled = false;
 
   bool _dispose = false;
 
+  @override
   void remove(Object key) {
     assert(!_dispose);
     assert(_listener.contains(key));
@@ -173,6 +187,7 @@ class NopListener {
     }
   }
 
+  @override
   void add(Object key) {
     assert(!_dispose);
     assert(!_listener.contains(key));

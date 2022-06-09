@@ -209,7 +209,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
       final data = widget.create!(context);
       if (data != null) {
         if (data is NopLifeCycle) data.init();
-        return NopListener(data);
+        return GetTypePointers.nopListenerCreater(data);
       }
     }
     return null;
@@ -269,7 +269,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
   bool isPage = false;
   void _initState() {
     if (widget.value != null) {
-      final listener = NopListener(widget.value!);
+      final listener = GetTypePointers.nopListenerCreater(widget.value);
       final data = listener.data;
       if (data is NopLifeCycle) {
         data.init();
