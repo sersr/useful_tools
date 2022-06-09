@@ -59,6 +59,7 @@ mixin GetTypePointers {
 
   void addListener(Type t, NopListener listener) {
     t = getAlias(t);
+    assert(!_pointers.containsKey(t));
     _pointers[t] = listener;
   }
 
@@ -90,13 +91,13 @@ mixin GetTypePointers {
     return createArg(T, context);
   }
 
-  NopListener? findType<T>(BuildContext context, {bool shared = true}) {
-    return findTypeArg(T, context, shared: shared);
+  NopListener? findType<T>(BuildContext context) {
+    return findTypeArg(T, context);
   }
 
-  NopListener? findTypeArg(Type t, BuildContext context, {bool shared = true}) {
+  NopListener? findTypeArg(Type t, BuildContext context) {
     t = getAlias(t);
-    return shared ? _findArg(t, context) : _pointers[t];
+    return _findArg(t, context);
   }
 
   /// 找到依赖时，在寻找过程中的所有节点都会添加一次引用

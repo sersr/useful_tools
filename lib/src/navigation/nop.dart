@@ -110,19 +110,23 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     final pageState = getPageNopState(this);
     final dependences = pageState?.nopDependences;
 
-    // 当前页面查找
-    NopListener? listener =
-        dependences?.findTypeArg(T, context, shared: shared);
+    NopListener? listener;
 
-    if (listener == null && shared) {
-      // 页面链表查找
-      listener = currentDependences?.findTypeArg(T, context, shared: shared);
-      if (listener != null) {
-        dependences?.addListener(T, listener);
+    if (shared) {
+      // 当前页面查找
+      listener = dependences?.findTypeArg(T, context);
+      if (listener == null) {
+        // 页面链表查找
+        listener = currentDependences?.findTypeArg(T, context);
+        // 全局查找
+        listener ??= globalDependences.findTypeArg(T, context);
+
+        if (listener != null) {
+          /// 在当前 page 添加一个依赖
+          dependences?.addListener(T, listener);
+        }
       }
     }
-    // 全局查找
-    listener ??= globalDependences.findTypeArg(T, context);
     // 页面创建
     listener ??= dependences?.createListenerArg(T, context, shared: shared);
 
