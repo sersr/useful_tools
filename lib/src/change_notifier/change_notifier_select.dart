@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 
+import 'change_auto_listen.dart';
+
 typedef ShouldNotify<T, D extends ChangeNotifier> = T Function(D parent);
 
 extension ValueNotifierSelector<D extends ChangeNotifier> on D {
@@ -56,4 +58,22 @@ class ChangeNotifierSelector<T, D extends ChangeNotifier> extends ChangeNotifier
 
   @override
   T get value => _value;
+}
+
+extension ChangeAutoWrapperSelectorAl<T, D extends ChangeNotifier>
+    on ChangeNotifierSelector<T, D> {
+  ChangeAutoWrapperSelector<T, D> get al {
+    return ChangeAutoWrapperSelector(this);
+  }
+}
+
+class ChangeAutoWrapperSelector<T, D extends ChangeNotifier>
+    extends ChangeAutoWrapperBase<ChangeNotifierSelector<T, D>> {
+  ChangeAutoWrapperSelector(ChangeNotifierSelector<T, D> parent)
+      : super(parent);
+
+  T get value {
+    autoListen();
+    return parent.value;
+  }
 }

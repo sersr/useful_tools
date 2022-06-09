@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:nop/utils.dart';
 
 class ChangeAuto extends StatefulWidget {
-  const ChangeAuto({Key? key, required this.builder}) : super(key: key);
+  const ChangeAuto(this.builder, {Key? key}) : super(key: key);
   final Widget Function() builder;
 
   @override
@@ -17,6 +18,7 @@ class _ChangeAutoState extends State<ChangeAuto> {
 
   void addListener(ChangeNotifierAuto listenable) {
     if (_listenables.contains(listenable)) return;
+    assert(Log.i('${listenable.runtimeType} added'));
     _listenables.add(listenable);
     listenable.addListener(_listen);
   }
@@ -49,6 +51,12 @@ extension ChangeAutoWrapExt<T> on ValueNotifier<T> {
   }
 }
 
+extension AutoListenNotifierExt<T> on T {
+  AutoListenNotifier<T> get al {
+    return AutoListenNotifier(this);
+  }
+}
+
 mixin ChangeNotifierAuto on ChangeNotifier {
   void autoListen() {
     final state = Zone.current[_ChangeAutoState] as _ChangeAutoState?;
@@ -60,11 +68,40 @@ mixin ChangeNotifierAuto on ChangeNotifier {
   bool get disposed;
 }
 
-class ChangeAutoWrapper<T> extends ChangeNotifier
-    with EquatableMixin, ChangeNotifierAuto
+class AutoListenNotifier<T> extends ValueNotifier<T> with ChangeNotifierAuto {
+  AutoListenNotifier(T value) : super(value);
+
+  @override
+  T get value {
+    autoListen();
+    return super.value;
+  }
+
+  bool _disposed = false;
+  @override
+  bool get disposed => _disposed;
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+class ChangeAutoWrapper<T> extends ChangeAutoWrapperBase<ValueNotifier<T>>
     implements ValueListenable<T> {
-  ChangeAutoWrapper(this.parent);
-  final ValueNotifier<T> parent;
+  ChangeAutoWrapper(ValueNotifier<T> parent) : super(parent);
+
+  @override
+  T get value {
+    autoListen();
+    return parent.value;
+  }
+}
+
+class ChangeAutoWrapperBase<P extends ChangeNotifier> extends ChangeNotifier
+    with EquatableMixin, ChangeNotifierAuto {
+  ChangeAutoWrapperBase(this.parent);
+  final P parent;
 
   @override
   void addListener(VoidCallback listener) {
@@ -74,12 +111,6 @@ class ChangeAutoWrapper<T> extends ChangeNotifier
   @override
   void removeListener(VoidCallback listener) {
     parent.removeListener(listener);
-  }
-
-  @override
-  T get value {
-    autoListen();
-    return parent.value;
   }
 
   @override
