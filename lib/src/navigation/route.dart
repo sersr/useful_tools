@@ -24,19 +24,44 @@ mixin NopRouteActionMixin<T> {
   NopRoute get route;
   Object? get arguments;
   BuildContext? get context;
-  Object? result;
+
   Future<T?> get go {
     return route.pushNamed(context: context, arguments: arguments);
   }
 
-  Future<T?> get goBack {
+  Future<T?> popAndGo({Object? result}) {
     return route.popAndPushNamed(
         context: context, result: result, arguments: arguments);
   }
 
-  Future<T?> get goReplace {
+  Future<T?> goReplacement({Object? result}) {
     return route.pushReplacementNamed(
         context: context, result: result, arguments: arguments);
+  }
+
+  Future<T?> goAndRemoveUntil(bool Function(Route<dynamic>) predicate) {
+    return route.pushNamedAndRemoveUntil(context, predicate,
+        arguments: arguments);
+  }
+
+  FutureOr<String?> get goRs {
+    return route.restorablePushNamed(context, arguments: arguments);
+  }
+
+  FutureOr<String?> popAndGoRs({Object? result}) {
+    return route.restorablePopAndPushNamed(context,
+        result: result, arguments: arguments);
+  }
+
+  FutureOr<String?> goReplacementRs({Object? result}) {
+    return route.restorablePushReplacementNamed(context,
+        result: result, arguments: arguments);
+  }
+
+  FutureOr<String?> goAndRemoveUntilRs(
+      bool Function(Route<dynamic>) predicate) {
+    return route.restorablePushNamedAndRemoveUntil(context, predicate,
+        arguments: arguments);
   }
 }
 
@@ -108,43 +133,102 @@ class NopRoute {
         result: result, arguments: arguments);
   }
 
+  Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
+    BuildContext? context,
+    bool Function(Route<dynamic>) predicate, {
+    Object? arguments,
+  }) {
+    NavigationActions action = navigationActions;
+    if (context == null) {
+      action = navigationWithoutContext;
+    }
+    return action.pushNamedAndRemoveUntil(context, fullName, predicate);
+  }
+
+  FutureOr<String?> restorablePushNamed(BuildContext? context,
+      {Object? arguments}) {
+    NavigationActions action = navigationActions;
+    if (context == null) {
+      action = navigationWithoutContext;
+    }
+    return action.restorablePushNamed(context, fullName);
+  }
+
+  FutureOr<String?> restorablePopAndPushNamed<R extends Object>(
+      BuildContext? context,
+      {Object? arguments,
+      R? result}) {
+    NavigationActions action = navigationActions;
+    if (context == null) {
+      action = navigationWithoutContext;
+    }
+    return action.restorablePopAndPushNamed(context, fullName, result: result);
+  }
+
+  FutureOr<String?> restorablePushReplacementNamed<R extends Object>(
+      BuildContext? context,
+      {Object? arguments,
+      R? result}) {
+    NavigationActions action = navigationActions;
+    if (context == null) {
+      action = navigationWithoutContext;
+    }
+    return action.restorablePushReplacementNamed(context, fullName,
+        result: result);
+  }
+
+  FutureOr<String?> restorablePushNamedAndRemoveUntil(
+    BuildContext? context,
+    bool Function(Route<dynamic>) predicate, {
+    Object? arguments,
+  }) {
+    NavigationActions action = navigationActions;
+    if (context == null) {
+      action = navigationWithoutContext;
+    }
+    return action.restorablePushNamedAndRemoveUntil(
+        context, fullName, predicate);
+  }
+
   static final _reg = RegExp(r'\?(.*)');
   static final _regKV = RegExp(r'(.*?)=([^&]*)');
 
-  NopRouteBuilder? onMatch(RouteSettings settings,
-      {String? pathName, Map<String, dynamic>? query}) {
-    if (pathName == null) {
-      pathName = settings.name ?? '';
-      if (_reg.hasMatch(pathName)) {
-        pathName = pathName.replaceAll(_reg, '');
-        final ms = _reg.allMatches(settings.name ?? '');
-        for (var item in ms) {
-          query ??= <String, dynamic>{};
-          final entry = _regKV.allMatches(item[1]!);
-          for (var kv in entry) {
-            query[kv[1]!] = kv[2]!;
-          }
+  NopRouteBuilder? onMatch(RouteSettings settings) {
+    var pathName = settings.name ?? '';
+    final query = <String, dynamic>{};
+    if (_reg.hasMatch(pathName)) {
+      pathName = pathName.replaceAll(_reg, '');
+      final ms = _reg.allMatches(pathName);
+      for (var item in ms) {
+        final entry = _regKV.allMatches(item[1]!);
+        for (var kv in entry) {
+          query[kv[1]!] = kv[2]!;
         }
       }
     }
-    if (!pathName.contains(fullName)) return null;
-    if (pathName == fullName) {
-      var args = settings.arguments ?? query ?? const {};
+
+    return _onMatch(this, settings, pathName, query);
+  }
+
+  static NopRouteBuilder? _onMatch(NopRoute current, RouteSettings settings,
+      String pathName, Map<String, dynamic> query) {
+    if (!pathName.contains(current.fullName)) return null;
+
+    if (pathName == current.fullName) {
       return NopRouteBuilder(
-          route: this,
-          settings: settings.copyWith(name: pathName, arguments: args));
+          route: current,
+          settings: settings.copyWith(name: pathName, arguments: query));
     }
 
-    for (var child in children) {
-      assert(child != this);
-      final route = child.onMatch(settings, pathName: pathName, query: query);
+    for (var child in current.children) {
+      assert(child != current);
+      final route = _onMatch(child, settings, pathName, query);
       if (route != null) return route;
     }
 
-    var args = settings.arguments ?? query ?? const {};
     return NopRouteBuilder(
-        route: this,
-        settings: settings.copyWith(name: pathName, arguments: args));
+        route: current,
+        settings: settings.copyWith(name: pathName, arguments: query));
   }
 }
 
