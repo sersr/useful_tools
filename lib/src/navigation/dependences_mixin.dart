@@ -14,23 +14,22 @@ mixin GetTypePointers {
   bool get isEmpty => _pointers.isEmpty;
 
   NopListener getType<T>(BuildContext context, {bool shared = true}) {
-    return _getTypeArg(getAlias(T), context);
+    return _getTypeArg(T, context, shared);
   }
 
-  NopListener getTypeAliasArg(Type t, BuildContext context,
-      {bool shared = true}) {
-    return _getTypeArg(getAlias(t), context, shared: shared);
+  NopListener getTypeArg(Type t, BuildContext context, {bool shared = true}) {
+    return _getTypeArg(t, context, shared);
   }
 
   /// shared == false, 不保存引用
-  NopListener _getTypeArg(Type t, BuildContext context, {bool shared = true}) {
-    var listener = _findTypeArgSet(t, context, shared: shared);
-    listener ??= _createListenerArg(t, context, shared: shared);
+  NopListener _getTypeArg(Type t, BuildContext context, bool shared) {
+    t = getAlias(t);
+    var listener = _findTypeArgSet(t, context, shared);
+    listener ??= _createListenerArg(t, context, shared);
     return listener;
   }
 
-  NopListener? _findTypeArgSet(Type t, BuildContext context,
-      {bool shared = true}) {
+  NopListener? _findTypeArgSet(Type t, BuildContext context, bool shared) {
     var listener = _pointers[t];
     if (listener == null && shared) {
       listener = _findParentTypeArg(t, context);
@@ -44,10 +43,16 @@ mixin GetTypePointers {
     return listener;
   }
 
-  NopListener _createListenerArg(Type t, BuildContext context,
+  NopListener createListenerArg(Type t, BuildContext context,
       {bool shared = true}) {
+    t = getAlias(t);
+    return _createListenerArg(t, context, shared);
+  }
+
+  NopListener _createListenerArg(Type t, BuildContext context, bool shared) {
     var listener = createArg(t, context);
-    assert(Log.w('create $t'));
+    assert(!_pointers.containsKey(t));
+    assert(Log.w('shared: $shared, create: $t'));
     if (shared) _pointers[t] = listener; // 只有共享才会添加到共享域中
     return listener;
   }
@@ -103,7 +108,8 @@ mixin GetTypePointers {
       parent?._findArg(t, context);
 }
 
-typedef _Factory = Either<BuildFactory, BuildContextFactory> Function(Type t);
+typedef _Factory<T> = Either<BuildFactory<T>, BuildContextFactory<T>> Function(
+    Type t);
 mixin NopLifeCycle {
   void init();
   void nopDispose();

@@ -107,7 +107,8 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
 
   NopListener getOrCreateDependence<T>(BuildContext context,
       {bool shared = true}) {
-    final dependences = getPageNopState(this)?.nopDependences;
+    final pageState = getPageNopState(this);
+    final dependences = pageState?.nopDependences;
 
     // 当前页面查找
     NopListener? listener =
@@ -123,10 +124,13 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     // 全局查找
     listener ??= globalDependences.findTypeArg(T, context);
     // 页面创建
-    listener ??= dependences?.getTypeAliasArg(T, context, shared: shared);
+    listener ??= dependences?.createListenerArg(T, context, shared: shared);
 
     assert(isPage ||
         nopDependences.parent == null && nopDependences.child == null);
+    assert(pageState == null ||
+        pageState.isPage ||
+        pageState.nopDependences.lastChild == currentDependences);
 
     return listener ?? createGlobalListener<T>(context);
   }
@@ -135,7 +139,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
   static NopListener createGlobalListener<T>(BuildContext context) {
     assert(Log.w('在全局创建 $T 对象', position: 5));
 
-    return globalDependences.getTypeAliasArg(T, context);
+    return globalDependences.getTypeArg(T, context);
   }
 
   NopListener? _getOrCreateCurrent<T>() {

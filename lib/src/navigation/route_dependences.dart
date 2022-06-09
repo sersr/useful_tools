@@ -18,6 +18,14 @@ class NopDependences with GetTypePointers {
   NopDependences? parent;
   NopDependences? child;
 
+  NopDependences? get lastChild {
+    return child?.lastChild ?? child;
+  }
+
+  NopDependences? get firstParent {
+    return parent?.parent ?? parent;
+  }
+
   void updateChild(NopDependences newChild) {
     assert(child == null);
     child?.parent = null;
