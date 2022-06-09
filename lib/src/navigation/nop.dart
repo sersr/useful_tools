@@ -9,6 +9,7 @@ import 'nop_pre_init.dart';
 import 'typedef.dart';
 
 extension GetType on BuildContext {
+  /// [shared] 即使为 false, 也会在[Nop.page]中共享
   T getType<T>({bool shared = true}) {
     return Nop.of(this, shared: shared);
   }
@@ -48,6 +49,14 @@ class Nop<C> extends StatefulWidget {
         isPage = false,
         super(key: key);
 
+  /// page 共享域
+  /// shared == false, 也会共享
+  /// page 与 page 之间存在隔离
+  ///
+  /// 每个 page 都有一个 [NopDependences] 依赖节点
+  /// [NopDependences] : 只保存引用，不添加监听，监听由[_NopState]管理
+  /// page 释放会自动移除 依赖节点
+  /// [NopListener] : 管理监听对象，当没有监听者时释放
   const Nop.page({
     Key? key,
     required this.child,
@@ -126,9 +135,20 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
           dependences?.addListener(T, listener);
         }
       }
+    } else {
+      listener = pageState?._caches[T];
+      assert(listener == null || pageState != this);
     }
-    // 页面创建
-    listener ??= dependences?.createListenerArg(T, context, shared: shared);
+    if (listener == null) {
+      if (pageState != null) {
+        // 页面创建
+        listener = dependences!.createListenerArg(T, context, shared: shared);
+        // 如果不是共享那么在 page 添加一个监听引用
+        if (!shared) {
+          pageState._setListener(listener);
+        }
+      }
+    }
 
     assert(isPage ||
         nopDependences.parent == null && nopDependences.child == null);
