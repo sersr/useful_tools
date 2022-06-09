@@ -71,7 +71,13 @@ mixin GetTypePointers {
       right: (right) => right(context),
     );
 
-    if (data is NopLifeCycle) data.init();
+    if (data is NopLifeCycle) {
+      try {
+        data.init();
+      } catch (e, s) {
+        Log.e('$t init error: $e\n$s', onlyDebug: false);
+      }
+    }
     return NopListener(data);
   }
 
@@ -136,7 +142,9 @@ mixin NopListenerUpdate {
 class NopListener {
   NopListener(this.data);
   final dynamic data;
-  final Set<Object> listener = {};
+  final Set<Object> _listener = {};
+
+  bool get isEmpty => _listener.isEmpty;
 
   bool _secheduled = false;
 
@@ -144,19 +152,19 @@ class NopListener {
 
   void remove(Object key) {
     assert(!_dispose);
-    assert(listener.contains(key));
-    listener.remove(key);
+    assert(_listener.contains(key));
+    _listener.remove(key);
 
     final local = data;
     if (local is Listenable && key is NopListenerUpdate) {
       local.removeListener(key.update);
     }
 
-    if (listener.isEmpty) {
+    if (isEmpty) {
       if (_secheduled) return;
       scheduleMicrotask(() {
         _secheduled = false;
-        if (listener.isEmpty) {
+        if (isEmpty) {
           _dispose = true;
           NopLifeCycle.autoDispse(data);
         }
@@ -167,14 +175,12 @@ class NopListener {
 
   void add(Object key) {
     assert(!_dispose);
-    assert(!listener.contains(key));
+    assert(!_listener.contains(key));
 
-    listener.add(key);
+    _listener.add(key);
     final local = data;
-    if (local is Listenable) {
-      if (key is NopListenerUpdate) {
-        local.addListener(key.update);
-      }
+    if (local is Listenable && key is NopListenerUpdate) {
+      local.addListener(key.update);
     }
   }
 }
