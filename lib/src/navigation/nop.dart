@@ -221,7 +221,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
   static void push(NopDependences dependences) {
     assert(currentDependences == null || currentDependences!.child == null);
     assert(dependences.parent == null && dependences.child == null);
-    currentDependences?.updateChild(dependences);
+    currentDependences?.insertChild(dependences);
     currentDependences = dependences;
   }
 
