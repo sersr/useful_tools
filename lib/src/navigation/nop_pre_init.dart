@@ -11,13 +11,17 @@ class NopPreInit extends StatefulWidget {
     this.builders,
     required this.init,
     required this.child,
+    this.initTypes = const [],
+    this.initTypesUnique = const [],
   }) : super(key: key);
 
   final NopPreInitCallback? preRun;
   final NopWidgetBuilder? builder;
   final List<NopWidgetBuilder>? builders;
-  final T Function<T>(BuildContext context, {bool shared}) init;
+  final T Function<T>(Type t, BuildContext context, {bool shared}) init;
   final Widget child;
+  final List<Type> initTypes;
+  final List<Type> initTypesUnique;
 
   @override
   State<NopPreInit> createState() => _NopPreInitState();
@@ -26,14 +30,23 @@ class NopPreInit extends StatefulWidget {
 class _NopPreInitState extends State<NopPreInit> {
   @override
   void initState() {
+    _init(widget.initTypesUnique, false);
     if (widget.preRun != null) {
       widget.preRun!(_initFirst);
     }
+    _init(widget.initTypes, true);
+
     super.initState();
   }
 
   T _initFirst<T>({bool shared = true}) {
-    return widget.init<T>(context, shared: shared);
+    return widget.init<T>(T, context, shared: shared);
+  }
+
+  void _init(List<Type> types, bool shared) {
+    for (var item in types) {
+      widget.init(item, context, shared: shared);
+    }
   }
 
   @override

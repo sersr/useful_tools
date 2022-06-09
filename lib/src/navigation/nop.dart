@@ -31,9 +31,11 @@ class Nop<C> extends StatefulWidget {
     Key? key,
     required this.child,
     this.builder,
-    this.preRun,
+    @Deprecated('use initTypes or initTypesUnique instead') this.preRun,
     this.builders,
     this.create,
+    this.initTypes = const [],
+    this.initTypesUnique = const [],
   })  : value = null,
         isPage = false,
         super(key: key);
@@ -43,8 +45,10 @@ class Nop<C> extends StatefulWidget {
     this.value,
     required this.child,
     this.builder,
-    this.preRun,
+    @Deprecated('use initTypes or initTypesUnique instead') this.preRun,
     this.builders,
+    this.initTypes = const [],
+    this.initTypesUnique = const [],
   })  : create = null,
         isPage = false,
         super(key: key);
@@ -61,8 +65,10 @@ class Nop<C> extends StatefulWidget {
     Key? key,
     required this.child,
     this.builder,
-    this.preRun,
+    @Deprecated('use initTypes or initTypesUnique instead') this.preRun,
     this.builders,
+    this.initTypes = const [],
+    this.initTypesUnique = const [],
   })  : create = null,
         isPage = true,
         value = null,
@@ -73,6 +79,8 @@ class Nop<C> extends StatefulWidget {
   final NopWidgetBuilder? builder;
   final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
+  final List<Type> initTypes;
+  final List<Type> initTypesUnique;
   final C? value;
   final bool isPage;
 
@@ -93,6 +101,13 @@ class Nop<C> extends StatefulWidget {
     return nop?.state;
   }
 
+  /// 内部使用
+  /// [t] 是 [T] 类型
+  static T _ofType<T>(Type t, BuildContext context, {bool shared = true}) {
+    final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>()!;
+    return nop.state.getTypeArg<T>(t, context, shared: shared);
+  }
+
   @override
   State<Nop<C>> createState() => _NopState<C>();
 }
@@ -102,11 +117,11 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
   late final nopDependences = NopDependences();
 
   T getType<T>(BuildContext context, {bool shared = true}) {
-    var listener = _getOrCreateCurrent<T>();
+    var listener = _getOrCreateCurrent(T);
 
     if (listener == null) {
-      listener = getOrCreateDependence<T>(context, shared: shared);
-      _setListener<T>(listener);
+      listener = getOrCreateDependence(T, context, shared: shared);
+      _setListener(T, listener);
     }
 
     assert(!Nop.print || Log.i('get $T', position: 3));
@@ -114,7 +129,20 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     return listener.data;
   }
 
-  NopListener getOrCreateDependence<T>(BuildContext context,
+  T getTypeArg<T>(Type t, BuildContext context, {bool shared = true}) {
+    var listener = _getOrCreateCurrent(t);
+
+    if (listener == null) {
+      listener = getOrCreateDependence(t, context, shared: shared);
+      _setListener(t, listener);
+    }
+
+    assert(!Nop.print || Log.i('get $t returnType: $T', position: 3));
+
+    return listener.data;
+  }
+
+  NopListener getOrCreateDependence(Type t, BuildContext context,
       {bool shared = true}) {
     final pageState = getPageNopState(this);
     final dependences = pageState?.nopDependences;
@@ -123,30 +151,28 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
 
     if (shared) {
       // 当前页面查找
-      listener = dependences?.findTypeArg(T, context);
+      listener = dependences?.findTypeArg(t, context);
       if (listener == null) {
         // 页面链表查找
-        listener = currentDependences?.findTypeArg(T, context);
+        listener = currentDependences?.findTypeArg(t, context);
         // 全局查找
-        listener ??= globalDependences.findTypeArg(T, context);
+        listener ??= globalDependences.findTypeArg(t, context);
 
         if (listener != null) {
           /// 在当前 page 添加一个依赖
-          dependences?.addListener(T, listener);
+          dependences?.addListener(t, listener);
         }
       }
     } else {
-      listener = pageState?._caches[T];
+      listener = pageState?._caches[t];
       assert(listener == null || pageState != this);
     }
-    if (listener == null) {
-      if (pageState != null) {
-        // 页面创建
-        listener = dependences!.createListenerArg(T, context, shared: shared);
-        // 如果不是共享那么在 page 添加一个监听引用
-        if (!shared) {
-          pageState._setListener(listener);
-        }
+    if (listener == null && pageState != null) {
+      // 页面创建
+      listener = dependences!.createListenerArg(t, context, shared: shared);
+      // 如果不是共享那么在 page 添加一个监听引用
+      if (!shared) {
+        pageState._setListener(t, listener);
       }
     }
 
@@ -156,30 +182,30 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
         pageState.isPage &&
             pageState.nopDependences.lastChildOrSelf == currentDependences);
 
-    return listener ?? createGlobalListener<T>(context);
+    return listener ?? createGlobalListener(t, context);
   }
 
   @pragma('vm:prefer-inline')
-  static NopListener createGlobalListener<T>(BuildContext context) {
-    assert(Log.w('在全局创建 $T 对象', position: 5));
+  static NopListener createGlobalListener(Type t, BuildContext context) {
+    assert(Log.w('在全局创建 $t 对象', position: 5));
 
-    return globalDependences.getTypeArg(T, context);
+    return globalDependences.getTypeArg(t, context);
   }
 
-  NopListener? _getOrCreateCurrent<T>() {
-    var listener = _caches[T];
+  NopListener? _getOrCreateCurrent(Type t) {
+    var listener = _caches[t];
 
     if (listener == null) {
-      listener = _create<T>();
+      listener = _create(t);
       if (listener != null) {
-        _setListener<T>(listener);
+        _setListener(t, listener);
       }
     }
     return listener;
   }
 
-  NopListener? _create<T>() {
-    if (widget.create != null && T == C) {
+  NopListener? _create(Type t) {
+    if (widget.create != null && t == C) {
       final data = widget.create!(context);
       if (data != null) {
         if (data is NopLifeCycle) data.init();
@@ -220,9 +246,9 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     return state;
   }
 
-  void _setListener<T>(NopListener listener) {
+  void _setListener(t, NopListener listener) {
     listener.add(this);
-    _caches[T] = listener;
+    _caches[t] = listener;
   }
 
   @override
@@ -248,7 +274,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
       if (data is NopLifeCycle) {
         data.init();
       }
-      _setListener<C>(listener);
+      _setListener(C, listener);
     }
   }
 
@@ -281,8 +307,8 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     return _NopScoop(child: child, state: this);
   }
 
-  static T _init<T>(context, {bool shared = true}) {
-    return Nop.of<T>(context, shared: shared);
+  static T _init<T>(Type t, context, {bool shared = true}) {
+    return Nop._ofType<T>(t, context, shared: shared);
   }
 }
 
