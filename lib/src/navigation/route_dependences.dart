@@ -1,17 +1,4 @@
-import 'package:flutter/material.dart';
-
 import 'dependences_mixin.dart';
-
-class RouteDependences with GetTypePointers {
-  RouteDependences(this.route, this._parent);
-
-  final RouteDependences? _parent;
-
-  @override
-  GetTypePointers? get parent => _parent;
-
-  Route route;
-}
 
 class NopDependences with GetTypePointers {
   @override
@@ -35,15 +22,20 @@ class NopDependences with GetTypePointers {
   }
 
   void updateChild(NopDependences newChild) {
-    assert(child == null);
-    child?.parent = null;
-    child = newChild;
+    assert(child == null || child!.parent == this);
+    newChild.child = child?.child;
+    child?._remove();
     newChild.parent = this;
+    child = newChild;
   }
 
-  void removeChild() {
+  void removeCurrent() {
     parent?.child = child;
     child?.parent = parent;
+    _remove();
+  }
+
+  void _remove() {
     parent = null;
     child = null;
   }

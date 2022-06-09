@@ -230,7 +230,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
       assert(dependences.child == null);
       currentDependences = dependences.parent;
     }
-    dependences.removeChild();
+    dependences.removeCurrent();
   }
 
   static _NopState? getPageNopState(_NopState currentState) {
