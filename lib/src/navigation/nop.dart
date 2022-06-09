@@ -129,8 +129,8 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     assert(isPage ||
         nopDependences.parent == null && nopDependences.child == null);
     assert(pageState == null ||
-        pageState.isPage ||
-        pageState.nopDependences.lastChild == currentDependences);
+        pageState.isPage &&
+            pageState.nopDependences.lastChildOrSelf == currentDependences);
 
     return listener ?? createGlobalListener<T>(context);
   }
