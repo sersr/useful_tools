@@ -156,13 +156,13 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     NopListener? listener = pageState?._caches[t];
     assert(listener == null || pageState != this);
 
-    listener ??= dependences?.findCurrentTypeArg(t);
-
     if (listener == null && shared) {
-      // 页面查找
-      listener = dependences?.findTypeArgOther(t);
+      // 当前页面查找
+      listener = dependences?.findCurrentTypeArg(t);
 
       if (listener == null) {
+        // 其他页面查找
+        listener = dependences?.findTypeArgOther(t);
         // 全局查找
         listener ??= globalDependences.findTypeArg(t);
 
