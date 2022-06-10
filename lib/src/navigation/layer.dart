@@ -20,7 +20,7 @@ Future<T> pushRecoder<T>(
   final local = notifier.value;
 
   final notifierSelector =
-      notifier.selector((parent) => local < parent.value - saveCount);
+      notifier.select((parent) => local < parent.value - saveCount);
 
   return callback(notifierSelector)
     ..whenComplete(() {

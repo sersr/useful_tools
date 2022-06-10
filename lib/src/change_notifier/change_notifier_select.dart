@@ -6,7 +6,7 @@ import 'change_auto_listen.dart';
 typedef ShouldNotify<T, D extends ChangeNotifier> = T Function(D parent);
 
 extension ValueNotifierSelector<D extends ChangeNotifier> on D {
-  ChangeNotifierSelector<T, D> selector<T>(ShouldNotify<T, D> notifyValue) {
+  ChangeNotifierSelector<T, D> select<T>(ShouldNotify<T, D> notifyValue) {
     return ChangeNotifierSelector(parent: this, notifyValue: notifyValue);
   }
 }
@@ -62,18 +62,7 @@ class ChangeNotifierSelector<T, D extends ChangeNotifier> extends ChangeNotifier
 
 extension ChangeAutoWrapperSelectorAl<T, D extends ChangeNotifier>
     on ChangeNotifierSelector<T, D> {
-  ChangeAutoWrapperSelector<T, D> get al {
-    return ChangeAutoWrapperSelector(this);
-  }
-}
-
-class ChangeAutoWrapperSelector<T, D extends ChangeNotifier>
-    extends ChangeAutoWrapperBase<ChangeNotifierSelector<T, D>> {
-  ChangeAutoWrapperSelector(ChangeNotifierSelector<T, D> parent)
-      : super(parent);
-
-  T get value {
-    autoListen();
-    return parent.value;
+  AutoListenDelegate<T, ChangeNotifierSelector<T, D>> get al {
+    return AutoListenDelegate(this);
   }
 }

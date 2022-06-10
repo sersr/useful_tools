@@ -14,9 +14,9 @@ class ChangeAuto extends StatefulWidget {
 }
 
 class _ChangeAutoState extends State<ChangeAuto> {
-  final _listenables = <ChangeNotifierAuto>{};
+  final _listenables = <AutoListenChangeNotifierMixin>{};
 
-  void addListener(ChangeNotifierAuto listenable) {
+  void addListener(AutoListenChangeNotifierMixin listenable) {
     if (_listenables.contains(listenable)) return;
     assert(Log.i('${listenable.runtimeType} added'));
     _listenables.add(listenable);
@@ -27,7 +27,7 @@ class _ChangeAutoState extends State<ChangeAuto> {
     if (mounted) setState(() {});
   }
 
-  void removeListener(ChangeNotifierAuto listenable) {
+  void removeListener(AutoListenChangeNotifierMixin listenable) {
     if (listenable.disposed) return;
     listenable.removeListener(_listen);
   }
@@ -45,9 +45,15 @@ class _ChangeAutoState extends State<ChangeAuto> {
   }
 }
 
-extension ChangeAutoWrapExt<T> on ValueNotifier<T> {
-  ChangeAutoWrapper<T> get al {
-    return ChangeAutoWrapper(this);
+extension ChangeAutoWrapExt<D, T extends ValueNotifier<D>> on T {
+  AutoListenWrapper<D, T> get al {
+    return AutoListenWrapper(this);
+  }
+}
+
+extension ChangeAutoDelegateExt<D, T extends ValueListenable<D>> on T {
+  AutoListenDelegate<D, T> get al {
+    return AutoListenDelegate(this);
   }
 }
 
@@ -57,18 +63,8 @@ extension AutoListenNotifierExt<T> on T {
   }
 }
 
-mixin ChangeNotifierAuto on ChangeNotifier {
-  void autoListen() {
-    final state = Zone.current[_ChangeAutoState] as _ChangeAutoState?;
-    if (state != null) {
-      state.addListener(this);
-    }
-  }
-
-  bool get disposed;
-}
-
-class AutoListenNotifier<T> extends ValueNotifier<T> with ChangeNotifierAuto {
+class AutoListenNotifier<T> extends ValueNotifier<T>
+    with AutoListenChangeNotifierMixin {
   AutoListenNotifier(T value) : super(value);
 
   @override
@@ -77,31 +73,82 @@ class AutoListenNotifier<T> extends ValueNotifier<T> with ChangeNotifierAuto {
     return super.value;
   }
 
-  bool _disposed = false;
-  @override
-  bool get disposed => _disposed;
   @override
   void dispose() {
-    _disposed = true;
+    autoDispose();
     super.dispose();
   }
 }
 
-class ChangeAutoWrapper<T> extends ChangeAutoWrapperBase<ValueNotifier<T>>
-    implements ValueListenable<T> {
-  ChangeAutoWrapper(ValueNotifier<T> parent) : super(parent);
+class AutoListenWrapper<T, P extends ValueNotifier<T>>
+    extends AutoListenDelegate<T, P> implements ValueNotifier<T> {
+  AutoListenWrapper(P parent) : super(parent);
 
   @override
+  set value(T newValue) {
+    parent.value = newValue;
+  }
+
+  @override
+  bool get hasListeners => parent.hasListeners;
+
+  @override
+  void notifyListeners() => parent.notifyListeners();
+
+  @override
+  void dispose() {
+    parent.dispose();
+    autoDispose();
+  }
+}
+
+class AutoListenDelegate<T, P extends ValueListenable<T>>
+    with
+        AutoListenChangeNotifierMixin,
+        AutoListenValueDelegateMixin<T, P>,
+        AutoListenAddRemove<T, P>,
+        EquatableMixin
+    implements ValueListenable<T> {
+  AutoListenDelegate(this.parent);
+
+  @override
+  final P parent;
+
+  void updateParent(void Function(P parent) update) {
+    update(parent);
+  }
+
+  @override
+  List<Object?> get props => [parent];
+}
+
+mixin AutoListenChangeNotifierMixin implements Listenable {
+  void autoListen() {
+    final state = Zone.current[_ChangeAutoState] as _ChangeAutoState?;
+    if (state != null) {
+      state.addListener(this);
+    }
+  }
+
+  bool _disposed = false;
+  bool get disposed => _disposed;
+
+  void autoDispose() {
+    _disposed = true;
+  }
+}
+mixin AutoListenValueDelegateMixin<T, P extends ValueListenable<T>>
+    on AutoListenChangeNotifierMixin {
+  P get parent;
+
   T get value {
     autoListen();
     return parent.value;
   }
 }
-
-class ChangeAutoWrapperBase<P extends ChangeNotifier> extends ChangeNotifier
-    with EquatableMixin, ChangeNotifierAuto {
-  ChangeAutoWrapperBase(this.parent);
-  final P parent;
+mixin AutoListenAddRemove<T, P extends Listenable>
+    on AutoListenChangeNotifierMixin {
+  P get parent;
 
   @override
   void addListener(VoidCallback listener) {
@@ -112,30 +159,4 @@ class ChangeAutoWrapperBase<P extends ChangeNotifier> extends ChangeNotifier
   void removeListener(VoidCallback listener) {
     parent.removeListener(listener);
   }
-
-  @override
-  bool get hasListeners {
-    // ignore: invalid_use_of_protected_member
-    return parent.hasListeners;
-  }
-
-  @override
-  void notifyListeners() {
-    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
-    parent.notifyListeners();
-  }
-
-  bool _disposed = false;
-  @override
-  bool get disposed => _disposed;
-
-  @override
-  void dispose() {
-    _disposed = true;
-    parent.dispose();
-    super.dispose();
-  }
-
-  @override
-  List<Object?> get props => [parent];
 }
