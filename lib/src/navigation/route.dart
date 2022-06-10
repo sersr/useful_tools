@@ -209,7 +209,8 @@ class NopRoute {
       }
     }
 
-    return _onMatch(this, settings, pathName, query);
+    return _onMatch(this, settings, pathName,
+        query ?? settings.arguments as Map<String, dynamic>? ?? const {});
   }
 
   static NopRouteBuilder? _onMatch(NopRoute current, RouteSettings settings,
