@@ -2,9 +2,9 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
-import 'package:useful_tools/useful_tools.dart';
 
 import 'dependences_mixin.dart';
+import 'nop_dependences.dart';
 import 'nop_pre_init.dart';
 import 'typedef.dart';
 
@@ -24,7 +24,6 @@ extension GetType on BuildContext {
 /// 在一个页面中可以有多个区域，每个区域单独管理，由[shared]指定是否共享；
 /// 在全局中有一个依赖链表，里面的对象都是共享的；
 /// 在查找过程中，会在当前 page 依赖添加一个引用，即使是从其他 page 依赖获取的；
-/// 不管在什么地方，查找都是从当前顶层 page 依赖查找(全局)，再从当前 page 查找或创建；
 /// 如果没有 page，那么创建的对象只在特定的上下文共享
 class Nop<C> extends StatefulWidget {
   const Nop({

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'navigator_observer.dart';
+import '../navigation/navigator_observer.dart';
 
 class NopRouteAction<T> with NopRouteActionMixin<T> {
   NopRouteAction({

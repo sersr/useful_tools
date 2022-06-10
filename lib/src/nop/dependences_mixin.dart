@@ -4,7 +4,7 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
-import 'navigator_observer.dart';
+import '../navigation/navigator_observer.dart';
 
 /// [GetTypePointers] 本身不添加监听
 mixin GetTypePointers {
