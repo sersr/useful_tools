@@ -218,7 +218,7 @@ class NopRoute {
 
   NopRouteBuilder? onMatch(RouteSettings settings) {
     var pathName = settings.name ?? '';
-    Map<String, dynamic>? query;
+    Map<dynamic, dynamic>? query;
     assert(settings.arguments == null || settings.arguments is Map);
     if (_reg.hasMatch(pathName)) {
       pathName = pathName.replaceAll(_reg, '');
@@ -233,11 +233,11 @@ class NopRoute {
     }
 
     return _onMatch(this, settings, pathName,
-        query ?? settings.arguments as Map<String, dynamic>? ?? const {});
+        query ?? settings.arguments as Map<dynamic, dynamic>? ?? const {});
   }
 
   static NopRouteBuilder? _onMatch(NopRoute current, RouteSettings settings,
-      String pathName, Map<String, dynamic>? query) {
+      String pathName, Map<dynamic, dynamic>? query) {
     if (!pathName.contains(current.fullName)) return null;
 
     if (pathName == current.fullName) {
