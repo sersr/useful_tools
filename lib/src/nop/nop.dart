@@ -239,14 +239,15 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
 
   static _NopState? getPageNopState(_NopState currentState) {
     _NopState? state;
-    if (currentState.isPage) {
-      state = currentState;
-    } else {
-      final parentState = Nop._maybeOf(currentState.context);
-      if (parentState != null) {
-        state = getPageNopState(parentState);
+    _NopState? current = currentState;
+    while (current != null) {
+      if (current.isPage) {
+        state = current;
+        break;
       }
+      current = Nop._maybeOf(currentState.context);
     }
+
     return state;
   }
 
