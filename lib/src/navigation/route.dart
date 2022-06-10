@@ -80,6 +80,29 @@ class NopRoute {
     this.desc = '',
   });
 
+  static List<Route<dynamic>> onGenInitRoutes(NopRoute root, String name,
+      Route<dynamic>? Function(String name) genRoute) {
+    if (name == '/') {
+      final route = genRoute(name);
+      return route == null ? const [] : [route];
+    }
+
+    final routes = <Route<dynamic>>[];
+    final splits = name.split('/');
+
+    var currentName = '';
+    for (var item in splits) {
+      if (currentName.isNotEmpty && item.isEmpty) break;
+      currentName += '/$item';
+
+      final route = genRoute(currentName);
+      if (route != null) {
+        routes.add(route);
+      }
+    }
+    return routes;
+  }
+
   static final NavigationActions navigationActions = NavigationNativeActions(
     pushNamedCallabck: Navigator.pushNamed,
     popAndPushNamedCallabck: Navigator.popAndPushNamed,
