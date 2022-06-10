@@ -30,7 +30,6 @@ class Nop<C> extends StatefulWidget {
     Key? key,
     required this.child,
     this.builder,
-    @Deprecated('use initTypes or initTypesUnique instead') this.preRun,
     this.builders,
     this.create,
     this.initTypes = const [],
@@ -44,7 +43,6 @@ class Nop<C> extends StatefulWidget {
     this.value,
     required this.child,
     this.builder,
-    @Deprecated('use initTypes or initTypesUnique instead') this.preRun,
     this.builders,
     this.initTypes = const [],
     this.initTypesUnique = const [],
@@ -64,7 +62,6 @@ class Nop<C> extends StatefulWidget {
     Key? key,
     required this.child,
     this.builder,
-    @Deprecated('use initTypes or initTypesUnique instead') this.preRun,
     this.builders,
     this.initTypes = const [],
     this.initTypesUnique = const [],
@@ -74,7 +71,6 @@ class Nop<C> extends StatefulWidget {
         super(key: key);
 
   final Widget child;
-  final NopPreInitCallback? preRun;
   final NopWidgetBuilder? builder;
   final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
@@ -303,7 +299,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
   Widget build(BuildContext context) {
     final child = NopPreInit(
       child: widget.child,
-      preRun: widget.preRun,
       builder: widget.builder,
       builders: widget.builders,
       init: _init,

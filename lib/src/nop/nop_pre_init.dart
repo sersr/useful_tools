@@ -6,7 +6,6 @@ import 'typedef.dart';
 class NopPreInit extends StatefulWidget {
   const NopPreInit({
     Key? key,
-    this.preRun,
     this.builder,
     this.builders,
     required this.init,
@@ -15,7 +14,6 @@ class NopPreInit extends StatefulWidget {
     this.initTypesUnique = const [],
   }) : super(key: key);
 
-  final NopPreInitCallback? preRun;
   final NopWidgetBuilder? builder;
   final List<NopWidgetBuilder>? builders;
   final T Function<T>(Type t, BuildContext context, {bool shared}) init;
@@ -31,16 +29,10 @@ class _NopPreInitState extends State<NopPreInit> {
   @override
   void initState() {
     _init(widget.initTypesUnique, false);
-    if (widget.preRun != null) {
-      widget.preRun!(_initFirst);
-    }
+
     _init(widget.initTypes, true);
 
     super.initState();
-  }
-
-  T _initFirst<T>({bool shared = true}) {
-    return widget.init<T>(T, context, shared: shared);
   }
 
   void _init(List<Type> types, bool shared) {
