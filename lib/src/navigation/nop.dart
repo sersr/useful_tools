@@ -147,25 +147,30 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     final pageState = getPageNopState(this);
     final dependences = pageState?.nopDependences;
 
-    NopListener? listener;
+    assert(dependences == null ||
+        currentDependences != null &&
+            currentDependences!.contains(dependences));
 
-    if (shared) {
-      // 当前页面查找
-      listener = dependences?.findTypeArg(t, context);
+    assert(globalDependences.parent == null && globalDependences.child == null);
+
+    NopListener? listener = pageState?._caches[t];
+    assert(listener == null || pageState != this);
+
+    listener ??= dependences?.findCurrentTypeArg(t);
+
+    if (listener == null && shared) {
+      // 页面查找
+      listener = dependences?.findTypeArgOther(t);
+
       if (listener == null) {
-        // 页面链表查找
-        listener = currentDependences?.findTypeArg(t, context);
         // 全局查找
-        listener ??= globalDependences.findTypeArg(t, context);
+        listener ??= globalDependences.findTypeArg(t);
 
         if (listener != null) {
           /// 在当前 page 添加一个依赖
           dependences?.addListener(t, listener);
         }
       }
-    } else {
-      listener = pageState?._caches[t];
-      assert(listener == null || pageState != this);
     }
     if (listener == null && pageState != null) {
       // 页面创建

@@ -10,6 +10,7 @@ import 'navigator_observer.dart';
 mixin GetTypePointers {
   final _pointers = HashMap<Type, NopListener>();
   GetTypePointers? get parent;
+  GetTypePointers? get child;
 
   bool get isEmpty => _pointers.isEmpty;
 
@@ -24,28 +25,25 @@ mixin GetTypePointers {
   /// shared == false, 不保存引用
   NopListener _getTypeArg(Type t, BuildContext context, bool shared) {
     t = getAlias(t);
-    var listener = _findTypeArgSet(t, context, shared);
+    var listener = _findTypeArgSet(t);
     listener ??= _createListenerArg(t, context, shared);
     return listener;
   }
 
-  NopListener? _findTypeArgSet(Type t, BuildContext context, bool shared) {
-    var listener = _pointers[t];
-    if (listener == null && shared) {
-      listener = _findParentTypeArg(t, context);
-      if (listener != null) {
-        _pointers[t] = listener;
-      }
+  NopListener? _findTypeArgSet(Type t) {
+    var listener = _findCurrentTypeArg(t);
+    listener = _findTypeOtherElement(t);
+    if (listener != null && !_pointers.containsKey(t)) {
+      _pointers[t] = listener;
     }
-    assert(listener == null ||
-        shared ||
-        Log.w('shared: $shared, listener != null,已使用 shared = true 创建过 $t 对象'));
+
     return listener;
   }
 
   NopListener createListenerArg(Type t, BuildContext context,
       {bool shared = true}) {
     t = getAlias(t);
+
     return _createListenerArg(t, context, shared);
   }
 
@@ -61,6 +59,75 @@ mixin GetTypePointers {
     t = getAlias(t);
     assert(!_pointers.containsKey(t));
     _pointers[t] = listener;
+  }
+
+  NopListener? findType<T>() {
+    return _findTypeElement(getAlias(T));
+  }
+
+  bool contains(GetTypePointers other) {
+    bool contains = false;
+    visitElement((current) => contains = current == other);
+
+    return contains;
+  }
+
+  void visitElement(bool Function(GetTypePointers current) visitor) {
+    if (visitor(this)) return;
+    visitOtherElement(visitor);
+  }
+
+  void visitOtherElement(bool Function(GetTypePointers current) visitor) {
+    GetTypePointers? current = parent;
+    var success = false;
+    while (current != null) {
+      if (success = visitor(current)) return;
+      current = current.parent;
+    }
+
+    if (!success) {
+      current = child;
+      while (current != null) {
+        if (visitor(current)) return;
+        current = current.child;
+      }
+    }
+  }
+
+  NopListener? _findTypeElement(Type t) {
+    NopListener? listener;
+
+    visitElement(
+        (current) => (listener = current._findCurrentTypeArg(t)) != null);
+
+    return listener;
+  }
+
+  NopListener? findTypeArg(Type t) {
+    return _findTypeElement(getAlias(t));
+  }
+
+  NopListener? findTypeArgOther(Type t) {
+    return _findTypeOtherElement(getAlias(t));
+  }
+
+  NopListener? _findTypeOtherElement(Type t) {
+    NopListener? listener;
+
+    visitOtherElement((current) {
+      assert(current != this);
+      return (listener = current._findCurrentTypeArg(t)) != null;
+    });
+
+    return listener;
+  }
+
+  NopListener? _findCurrentTypeArg(Type t) {
+    return _pointers[t];
+  }
+
+  NopListener? findCurrentTypeArg(Type t) {
+    return _pointers[getAlias(t)];
   }
 
   static NopListener Function(dynamic data) nopListenerCreater = _defaultCreate;
@@ -99,23 +166,6 @@ mixin GetTypePointers {
   static NopListener create<T>(BuildContext context) {
     return createArg(T, context);
   }
-
-  NopListener? findType<T>(BuildContext context) {
-    return findTypeArg(T, context);
-  }
-
-  NopListener? findTypeArg(Type t, BuildContext context) {
-    t = getAlias(t);
-    return _findArg(t, context);
-  }
-
-  /// 找到依赖时，在寻找过程中的所有节点都会添加一次引用
-  NopListener? _findArg(Type t, BuildContext context) {
-    return _pointers[t] ?? _findParentTypeArg(t, context);
-  }
-
-  NopListener? _findParentTypeArg(Type t, BuildContext context) =>
-      parent?._findArg(t, context);
 }
 
 typedef _Factory<T> = Either<BuildFactory<T>, BuildContextFactory<T>> Function(

@@ -5,6 +5,7 @@ class NopDependences with GetTypePointers {
   final String? debugName;
   @override
   NopDependences? parent;
+  @override
   NopDependences? child;
 
   NopDependences? get lastChild {
