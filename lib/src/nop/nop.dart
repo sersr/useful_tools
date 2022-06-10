@@ -148,7 +148,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
 
     assert(globalDependences.parent == null && globalDependences.child == null);
 
-    NopListener? listener = pageState?._caches[t];
+    NopListener? listener = pageState?.getListener(t);
     assert(listener == null || pageState != this);
 
     if (listener == null && shared) {
@@ -193,7 +193,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
   }
 
   NopListener? _getOrCreateCurrent(Type t) {
-    var listener = _caches[t];
+    var listener = getListener(t);
 
     if (listener == null) {
       listener = _create(t);
@@ -247,9 +247,13 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     return state;
   }
 
+  NopListener? getListener(Type t) {
+    return _caches[GetTypePointers.getAlias(t)];
+  }
+
   void _setListener(t, NopListener listener) {
     listener.add(this);
-    _caches[t] = listener;
+    _caches[GetTypePointers.getAlias(t)] = listener;
   }
 
   @override
