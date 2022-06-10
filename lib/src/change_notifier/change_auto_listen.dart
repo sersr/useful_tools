@@ -5,15 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
-class ChangeAuto extends StatefulWidget {
-  const ChangeAuto(this.builder, {Key? key}) : super(key: key);
+typedef Cs = ChangeScoop;
+
+class ChangeScoop extends StatefulWidget {
+  const ChangeScoop(this.builder, {Key? key}) : super(key: key);
   final Widget Function() builder;
 
   @override
-  State<ChangeAuto> createState() => _ChangeAutoState();
+  State<ChangeScoop> createState() => _ChangeScoopState();
 }
 
-class _ChangeAutoState extends State<ChangeAuto> {
+class _ChangeScoopState extends State<ChangeScoop> {
   final _listenables = <AutoListenChangeNotifierMixin>{};
 
   void addListener(AutoListenChangeNotifierMixin listenable) {
@@ -41,24 +43,24 @@ class _ChangeAutoState extends State<ChangeAuto> {
 
   @override
   Widget build(BuildContext context) {
-    return runZoned(widget.builder, zoneValues: {_ChangeAutoState: this});
+    return runZoned(widget.builder, zoneValues: {_ChangeScoopState: this});
   }
 }
 
 extension ChangeAutoWrapExt<D, T extends ValueNotifier<D>> on T {
-  AutoListenWrapper<D, T> get al {
+  AutoListenWrapper<D, T> get cs {
     return AutoListenWrapper(this);
   }
 }
 
 extension ChangeAutoDelegateExt<D, T extends ValueListenable<D>> on T {
-  AutoListenDelegate<D, T> get al {
+  AutoListenDelegate<D, T> get cs {
     return AutoListenDelegate(this);
   }
 }
 
 extension AutoListenNotifierExt<T> on T {
-  AutoListenNotifier<T> get al {
+  AutoListenNotifier<T> get cs {
     return AutoListenNotifier(this);
   }
 }
@@ -124,7 +126,7 @@ class AutoListenDelegate<T, P extends ValueListenable<T>>
 
 mixin AutoListenChangeNotifierMixin implements Listenable {
   void autoListen() {
-    final state = Zone.current[_ChangeAutoState] as _ChangeAutoState?;
+    final state = Zone.current[_ChangeScoopState] as _ChangeScoopState?;
     if (state != null) {
       state.addListener(this);
     }
