@@ -218,11 +218,26 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
   static NopDependences? currentDependences;
   static final globalDependences = NopDependences();
 
-  static void push(NopDependences dependences) {
-    assert(currentDependences == null || currentDependences!.child == null);
+  static void push(NopDependences dependences, {NopDependences? parent}) {
     assert(dependences.parent == null && dependences.child == null);
-    currentDependences?.insertChild(dependences);
-    currentDependences = dependences;
+    if (currentDependences == null) {
+      currentDependences = dependences;
+    } else {
+      if (dependences == parent) {
+        parent = currentDependences;
+      } else {
+        parent ??= currentDependences;
+      }
+      parent!.insertChild(dependences);
+      updateCurrentDependences();
+    }
+  }
+
+  static void updateCurrentDependences() {
+    assert(currentDependences != null);
+    if (!currentDependences!.isLast) {
+      currentDependences = currentDependences!.lastChildOrSelf;
+    }
   }
 
   static void pop(NopDependences dependences) {
@@ -266,7 +281,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerUpdate {
     super.initState();
     isPage = widget.isPage;
     if (isPage) {
-      push(nopDependences);
+      push(nopDependences, parent: getPageNopState(this)?.nopDependences);
     }
     _initState();
   }

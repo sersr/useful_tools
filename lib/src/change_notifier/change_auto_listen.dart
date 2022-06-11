@@ -20,7 +20,7 @@ class _ChangeScoopState extends State<ChangeScoop> {
 
   void addListener(AutoListenChangeNotifierMixin listenable) {
     if (_listenables.contains(listenable)) return;
-    assert(Log.i('${listenable.runtimeType} added'));
+    assert(Log.i('${listenable.runtimeType} added', position: 3));
     _listenables.add(listenable);
     listenable.addListener(_listen);
   }
@@ -34,10 +34,26 @@ class _ChangeScoopState extends State<ChangeScoop> {
     listenable.removeListener(_listen);
   }
 
-  @override
-  void dispose() {
+  void clear() {
     _listenables.forEach(removeListener);
     _listenables.clear();
+  }
+
+  @override
+  void didUpdateWidget(covariant ChangeScoop oldWidget) {
+    clear();
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
+  void didChangeDependencies() {
+    clear();
+    super.didChangeDependencies();
+  }
+
+  @override
+  void dispose() {
+    clear();
     super.dispose();
   }
 
@@ -73,6 +89,10 @@ class AutoListenNotifier<T> extends ValueNotifier<T>
   T get value {
     autoListen();
     return super.value;
+  }
+
+  void update() {
+    notifyListeners();
   }
 
   @override

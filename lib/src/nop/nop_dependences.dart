@@ -9,11 +9,27 @@ class NopDependences with GetTypePointers {
   NopDependences? child;
 
   NopDependences? get lastChild {
-    return child?.lastChild ?? child;
+    NopDependences? last = child;
+    while (last != null) {
+      final child = last.child;
+      if (child == null) break;
+      last = child;
+    }
+
+    return last;
   }
 
+  bool get isFirst => parent == null;
+  bool get isLast => child == null;
+
   NopDependences? get firstParent {
-    return parent?.parent ?? parent;
+    NopDependences? first = parent;
+    while (first != null) {
+      final parent = first.parent;
+      if (parent == null) break;
+      first = parent;
+    }
+    return first;
   }
 
   NopDependences? get lastChildOrSelf {
