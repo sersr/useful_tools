@@ -19,8 +19,14 @@ class NopWidgetsFlutterBinding extends BindingBase
         CacheBinding,
         NopGestureBinding,
         WidgetsBinding {
+  static NopWidgetsFlutterBinding? _instance;
+  void initInstances() {
+    _instance = this;
+    super.initInstances();
+  }
+
   static WidgetsBinding ensureInitialized() {
-    if (WidgetsBinding.instance == null) NopWidgetsFlutterBinding();
+    if (_instance == null) NopWidgetsFlutterBinding();
     return WidgetsBinding.instance!;
   }
 }
