@@ -175,15 +175,11 @@ mixin NopLifeCycle {
   void nopDispose();
 
   static void autoDispse(Object lifeCycle) {
-    assert(Log.w('dispse: ${lifeCycle.runtimeType}'));
+    assert(Log.w('dispose: ${lifeCycle.runtimeType}'));
     if (lifeCycle is NopLifeCycle) {
       lifeCycle.nopDispose();
     } else if (lifeCycle is ChangeNotifier) {
       lifeCycle.dispose();
-    } else {
-      try {
-        (lifeCycle as dynamic).nopDispose();
-      } catch (_) {}
     }
   }
 }
