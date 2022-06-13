@@ -32,11 +32,11 @@ class NopDependences with GetTypePointers {
     return first;
   }
 
-  NopDependences? get lastChildOrSelf {
+  NopDependences get lastChildOrSelf {
     return lastChild ?? this;
   }
 
-  NopDependences? get firstParentOrSelf {
+  NopDependences get firstParentOrSelf {
     return firstParent ?? this;
   }
 
