@@ -126,31 +126,26 @@ class NopRoute {
         Nav.restorablePushNamedAndRemoveUntil,
   );
 
+  static NavigationActions getActions(BuildContext? context) {
+    return context == null ? navigationWithoutContext : navigationActions;
+  }
+
   Future<T?> pushNamed<T extends Object?>(
       {BuildContext? context, Object? arguments}) {
-    NavigationActions action = navigationActions;
-    if (context == null) {
-      action = navigationWithoutContext;
-    }
+    final action = getActions(context);
     return action.pushNamed(context, fullName, arguments: arguments);
   }
 
   Future<T?> popAndPushNamed<T extends Object?, R extends Object?>(
       {BuildContext? context, R? result, Object? arguments}) {
-    NavigationActions action = navigationActions;
-    if (context == null) {
-      action = navigationWithoutContext;
-    }
+    final action = getActions(context);
     return action.popAndPushNamed(context, fullName,
         result: result, arguments: arguments);
   }
 
   Future<T?> pushReplacementNamed<T extends Object?, R extends Object?>(
       {BuildContext? context, R? result, Object? arguments}) {
-    NavigationActions action = navigationActions;
-    if (context == null) {
-      action = navigationWithoutContext;
-    }
+    final action = getActions(context);
     return action.pushReplacementNamed(context, fullName,
         result: result, arguments: arguments);
   }
@@ -160,19 +155,13 @@ class NopRoute {
     RoutePredicate predicate, {
     Object? arguments,
   }) {
-    NavigationActions action = navigationActions;
-    if (context == null) {
-      action = navigationWithoutContext;
-    }
+    final action = getActions(context);
     return action.pushNamedAndRemoveUntil(context, fullName, predicate);
   }
 
   FutureOr<String?> restorablePushNamed(BuildContext? context,
       {Object? arguments}) {
-    NavigationActions action = navigationActions;
-    if (context == null) {
-      action = navigationWithoutContext;
-    }
+    final action = getActions(context);
     return action.restorablePushNamed(context, fullName);
   }
 
@@ -180,10 +169,7 @@ class NopRoute {
       BuildContext? context,
       {Object? arguments,
       R? result}) {
-    NavigationActions action = navigationActions;
-    if (context == null) {
-      action = navigationWithoutContext;
-    }
+    final action = getActions(context);
     return action.restorablePopAndPushNamed(context, fullName, result: result);
   }
 
@@ -191,10 +177,7 @@ class NopRoute {
       BuildContext? context,
       {Object? arguments,
       R? result}) {
-    NavigationActions action = navigationActions;
-    if (context == null) {
-      action = navigationWithoutContext;
-    }
+    final action = getActions(context);
     return action.restorablePushReplacementNamed(context, fullName,
         result: result);
   }
@@ -204,10 +187,7 @@ class NopRoute {
     RoutePredicate predicate, {
     Object? arguments,
   }) {
-    NavigationActions action = navigationActions;
-    if (context == null) {
-      action = navigationWithoutContext;
-    }
+    final action = getActions(context);
     return action.restorablePushNamedAndRemoveUntil(
         context, fullName, predicate);
   }
