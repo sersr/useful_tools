@@ -58,8 +58,7 @@ mixin NopRouteActionMixin<T> {
         result: result, arguments: arguments);
   }
 
-  FutureOr<String?> goAndRemoveUntilRs(
-      bool Function(Route<dynamic>) predicate) {
+  FutureOr<String?> goAndRemoveUntilRs(RoutePredicate predicate) {
     return route.restorablePushNamedAndRemoveUntil(context, predicate,
         arguments: arguments);
   }
@@ -158,7 +157,7 @@ class NopRoute {
 
   Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
     BuildContext? context,
-    bool Function(Route<dynamic>) predicate, {
+    RoutePredicate predicate, {
     Object? arguments,
   }) {
     NavigationActions action = navigationActions;
@@ -202,7 +201,7 @@ class NopRoute {
 
   FutureOr<String?> restorablePushNamedAndRemoveUntil(
     BuildContext? context,
-    bool Function(Route<dynamic>) predicate, {
+    RoutePredicate predicate, {
     Object? arguments,
   }) {
     NavigationActions action = navigationActions;
@@ -283,7 +282,7 @@ typedef PushReplaceNative = Future<T?> Function<T, R>(
 typedef PushAndRemoveUntilNative = Future<T?> Function<T extends Object?>(
   BuildContext context,
   String newRouteName,
-  bool Function(Route<dynamic>) predicate, {
+  RoutePredicate predicate, {
   Object? arguments,
 });
 typedef RePushNamedNative = String
@@ -297,7 +296,7 @@ typedef RePushReplaceNative = String Function<T, R>(
 typedef RePushAndRemoveUntilNative = String Function<T extends Object?>(
   BuildContext context,
   String newRouteName,
-  bool Function(Route<dynamic>) predicate, {
+  RoutePredicate predicate, {
   Object? arguments,
 });
 
@@ -345,7 +344,7 @@ class NavigationNativeActions extends NavigationActions {
 
   @override
   Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
-      BuildContext? context, String name, bool Function(Route p1) predicate,
+      BuildContext? context, String name, RoutePredicate predicate,
       {Object? arguments}) {
     return pushNamedAndRemoveUntilCallback(context!, name, predicate,
         arguments: arguments);
@@ -367,7 +366,7 @@ class NavigationNativeActions extends NavigationActions {
 
   @override
   String restorablePushNamedAndRemoveUntil(
-      BuildContext? context, String name, bool Function(Route p1) predicate,
+      BuildContext? context, String name, RoutePredicate predicate,
       {Object? arguments}) {
     return restorablePushNamedAndRemoveUntilCallback(context!, name, predicate,
         arguments: arguments);
@@ -389,7 +388,7 @@ typedef PushReplace = Future<T?> Function<T, R>(String name,
     {Object? arguments, R? result});
 typedef PushAndRemoveUntil = Future<T?> Function<T extends Object?>(
   String newRouteName,
-  bool Function(Route<dynamic>) predicate, {
+  RoutePredicate predicate, {
   Object? arguments,
 });
 typedef RePushNamed = Future<String?> Function(String name,
@@ -400,7 +399,7 @@ typedef RePushReplace = Future<String?> Function<R extends Object>(String name,
     {Object? arguments, R? result});
 typedef RePushAndRemoveUntil = Future<String?> Function(
   String newRouteName,
-  bool Function(Route<dynamic>) predicate, {
+  RoutePredicate predicate, {
   Object? arguments,
 });
 
@@ -428,11 +427,6 @@ class NavigationNavActions extends NavigationActions {
   @override
   Future<T?> pushNamed<T>(BuildContext? context, String name,
       {Object? arguments}) {
-    Navigator.pushNamedAndRemoveUntil;
-    Navigator.restorablePushNamed;
-    Navigator.restorablePopAndPushNamed;
-    Navigator.restorablePushNamedAndRemoveUntil;
-    Navigator.restorablePushReplacementNamed;
     return pushNamedCallabck(name, arguments: arguments);
   }
 
@@ -451,7 +445,7 @@ class NavigationNavActions extends NavigationActions {
 
   @override
   Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
-      BuildContext? context, String name, bool Function(Route p1) predicate,
+      BuildContext? context, String name, RoutePredicate predicate,
       {Object? arguments}) {
     return pushNamedAndRemoveUntilCallback(name, predicate);
   }
@@ -472,7 +466,7 @@ class NavigationNavActions extends NavigationActions {
 
   @override
   Future<String?> restorablePushNamedAndRemoveUntil(
-      BuildContext? context, String name, bool Function(Route p1) predicate,
+      BuildContext? context, String name, RoutePredicate predicate,
       {Object? arguments}) {
     return restorablePushNamedAndRemoveUntilCallback(name, predicate,
         arguments: arguments);
@@ -498,7 +492,7 @@ abstract class NavigationActions {
   Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
     BuildContext? context,
     String name,
-    bool Function(Route<dynamic>) predicate, {
+    RoutePredicate predicate, {
     Object? arguments,
   });
   FutureOr<String?> restorablePushNamed(BuildContext? context, String name,
@@ -513,7 +507,7 @@ abstract class NavigationActions {
   FutureOr<String?> restorablePushNamedAndRemoveUntil(
     BuildContext? context,
     String name,
-    bool Function(Route<dynamic>) predicate, {
+    RoutePredicate predicate, {
     Object? arguments,
   });
 }
