@@ -13,9 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
   meta: any
-  nop:
-    git: 
-      url: https://github.com/sersr/nop.git
+  nop: ^0.0.2+1
 dependency_overrides:
   nop: 
     path: ../nop
