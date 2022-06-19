@@ -20,6 +20,7 @@ class NopWidgetsFlutterBinding extends BindingBase
         NopGestureBinding,
         WidgetsBinding {
   static NopWidgetsFlutterBinding? _instance;
+  @override
   void initInstances() {
     _instance = this;
     super.initInstances();
