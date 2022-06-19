@@ -12,6 +12,7 @@ dependencies:
   equatable: ^2.0.3
   flutter:
     sdk: flutter
+  meta: any
   nop:
     git: 
       url: https://github.com/sersr/nop.git
