@@ -56,7 +56,7 @@ class ListViewBuilder extends StatefulWidget {
     this.itemCount,
     required this.itemBuilder,
     this.itemExtent,
-    this.primary,
+    this.primary = true,
     this.cacheExtent,
     this.padding = EdgeInsets.zero,
     this.scrollController,
@@ -118,8 +118,13 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
         : SliverFixedExtentList(
             delegate: delegate, itemExtent: widget.itemExtent!);
 
+    ScrollController? controller;
+    final primary = widget.primary == true && widget.scrollController != null;
+    if (!primary) {
+      controller = widget.scrollController;
+    }
     final config = ScrollConfiguration.of(context);
-    return Container(
+    Widget child = Container(
       color: widget.color,
       child: NotificationListener(
           onNotification: _onNotification,
@@ -131,7 +136,7 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
               physics: widget.physics,
               primary: widget.primary,
               cacheExtent: widget.cacheExtent,
-              controller: widget.scrollController,
+              controller: controller,
               scrollBehavior: widget.scrollBehavior,
               slivers: [
                 if (refresh.refreshDelegate != null)
@@ -144,6 +149,11 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
             ),
           )),
     );
+    if (primary) {
+      child = PrimaryScrollController(
+          controller: widget.scrollController!, child: child);
+    }
+    return child;
   }
 
   bool _onNotification(Notification n) {
