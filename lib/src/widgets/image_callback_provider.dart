@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:collection/collection.dart';
@@ -32,11 +31,12 @@ class CallbackWithKeyImage extends ImageProvider<CallbackWithKeyImage> {
   }
 
   @override
-  int get hashCode =>
-      hashValues(keys is Iterable ? hashList(keys as Iterable) : keys, scale);
+  int get hashCode => Object.hash(
+      keys is Iterable ? Object.hashAll(keys as Iterable) : keys, scale);
 
   @override
-  ImageStreamCompleter load(CallbackWithKeyImage key, DecoderCallback decode) {
+  ImageStreamCompleter loadBuffer(
+      CallbackWithKeyImage key, DecoderBufferCallback decode) {
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: key.scale,
@@ -47,16 +47,16 @@ class CallbackWithKeyImage extends ImageProvider<CallbackWithKeyImage> {
   static final _imageCallQueue = EventQueue(channels: 4);
 
   Future<ui.Codec> _loadAsync(
-      CallbackWithKeyImage key, DecoderCallback decode) async {
+      CallbackWithKeyImage key, DecoderBufferCallback decode) async {
     assert(key == this);
     final bytes = await _imageCallQueue.awaitTask(callback);
-
     if (bytes == null) {
       assert(Log.w('图片加载失败'));
-      PaintingBinding.instance!.imageCache!.evict(key);
+      PaintingBinding.instance.imageCache.evict(key);
       throw StateError('$keys is empty and cannot be loaded as an image.');
     }
-    return decode(bytes);
+    final im = await ui.ImmutableBuffer.fromUint8List(bytes);
+    return decode(im);
   }
 
   @override

@@ -28,6 +28,6 @@ class NopWidgetsFlutterBinding extends BindingBase
 
   static WidgetsBinding ensureInitialized() {
     if (_instance == null) NopWidgetsFlutterBinding();
-    return WidgetsBinding.instance!;
+    return WidgetsBinding.instance;
   }
 }

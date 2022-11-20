@@ -24,9 +24,6 @@ class _Resampler {
   final _HandleSampleTimeChangedCallback _handleSampleTimeChanged;
 
   void addOrDispatch(PointerEvent event) {
-    final scheduler = SchedulerBinding.instance;
-    assert(scheduler != null);
-
     if (event.kind == PointerDeviceKind.touch) {
       final _my = _resamplers.putIfAbsent(event.device, () => Resampler());
 
@@ -53,7 +50,7 @@ class _Resampler {
     });
     if (!_frameCallbackScheduled && isNotEmpty) {
       _frameCallbackScheduled = true;
-      scheduler?.scheduleFrameCallback((_) {
+      scheduler.scheduleFrameCallback((_) {
         _frameCallbackScheduled = false;
 
         _lastFrameTime = _frameTime;

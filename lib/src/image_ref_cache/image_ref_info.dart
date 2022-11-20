@@ -188,5 +188,5 @@ class PictureListener {
   }
 
   @override
-  int get hashCode => ui.hashValues(load, onDone);
+  int get hashCode => Object.hash(load, onDone);
 }

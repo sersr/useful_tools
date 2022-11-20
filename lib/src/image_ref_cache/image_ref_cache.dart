@@ -26,7 +26,7 @@ class ImageRefCache {
     return frameInfo.image;
   }
 
-  SchedulerBinding get scheduler => SchedulerBinding.instance!;
+  SchedulerBinding get scheduler => SchedulerBinding.instance;
 
   Future<ui.Codec> imageCodec(
     Uint8List list, {
@@ -375,6 +375,7 @@ typedef SetImage = void Function(ui.Image? image, bool error);
 typedef _PreBuilder = Future<void> Function(LoadStatus Function(), SetImage);
 typedef PathFuture = FutureOr<String?> Function(String url);
 typedef Unit8ListFuture = FutureOr<Uint8List?> Function();
+
 enum LoadStatus {
   defLoad,
   inactive,
