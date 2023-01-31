@@ -5,7 +5,7 @@ class Editor extends StatefulWidget {
   const Editor({Key? key}) : super(key: key);
 
   @override
-  _EditorState createState() => _EditorState();
+  State<Editor> createState() => _EditorState();
 }
 
 class _EditorState extends State<Editor> {

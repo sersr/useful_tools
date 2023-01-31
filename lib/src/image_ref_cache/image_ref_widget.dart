@@ -64,9 +64,9 @@ class ImageRefRenderBox extends RenderBox {
       paint.color = const Color.fromRGBO(0, 0, 0, 1);
       paint.filterQuality = FilterQuality.low;
       // paint.invertColors = invertColors;
-      final _size =
+      final size =
           constraints.constrainSizeAndAttemptToPreserveAspectRatio(_info!.size);
-      _info!.drawImageRef(canvas, src, offset & _size, paint);
+      _info!.drawImageRef(canvas, src, offset & size, paint);
     }
   }
 

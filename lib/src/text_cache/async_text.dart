@@ -92,7 +92,7 @@ class AsyncBuilder<T> extends StatefulWidget {
   final Widget? palceholder;
 
   @override
-  _AsyncBuilderState<T> createState() => _AsyncBuilderState<T>();
+  State<AsyncBuilder<T>> createState() => _AsyncBuilderState<T>();
 }
 
 class _AsyncBuilderState<T> extends State<AsyncBuilder<T>> {

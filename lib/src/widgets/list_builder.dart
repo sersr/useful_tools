@@ -107,7 +107,7 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
   Widget build(BuildContext context) {
     final p = MediaQuery.of(context).padding;
 
-    final _padding = p.bottom == 0.0
+    final padding = p.bottom == 0.0
         ? widget.padding
         : widget.padding.copyWith(bottom: p.bottom);
     final delegate = MyDelegate(widget.itemBuilder,
@@ -141,10 +141,10 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
               slivers: [
                 if (refresh.refreshDelegate != null)
                   SliverToBoxAdapter(
-                    child:
-                        RepaintBoundary(child: RefreshWidget(refresh: refresh)),
+                    child: RepaintBoundary(
+                        child: _RefreshWidget(refresh: refresh)),
                   ),
-                SliverPadding(padding: _padding, sliver: sliveList)
+                SliverPadding(padding: padding, sliver: sliveList)
               ],
             ),
           )),
@@ -240,7 +240,7 @@ class RefreshDelegate {
 
   void show() {
     if (_context != null && _refresh != null) {
-      final position = Scrollable.of(_context!)!.position;
+      final position = Scrollable.of(_context!).position;
       position.jumpTo(position.minScrollExtent);
       _refresh!
         .._setValue(maxExtent)
@@ -277,9 +277,9 @@ class _Refresh extends ChangeNotifier {
   }
 
   void _setValue(double v, [bool animated = false]) {
-    final _v = v.clamp(0.0, maxExtent);
-    if (_v == _value) return;
-    _value = _v;
+    final clampedV = v.clamp(0.0, maxExtent);
+    if (clampedV == _value) return;
+    _value = clampedV;
     if (!animated) {
       if (_value == 0.0) {
         _setMode(RefreshMode.idle);
@@ -341,7 +341,7 @@ class _Refresh extends ChangeNotifier {
         /// refresh 模式下: [ScrollUpdateNotification]只有在`value > 0.0`才有效
         if (value > 0.0 && (scrollDelta > 0 || mes.extentBefore == 0.0)) {
           final newValue = (value - scrollDelta).clamp(0.0, maxExtent);
-          Scrollable.of(n.context!)!.position.correctBy(-scrollDelta);
+          Scrollable.of(n.context!).position.correctBy(-scrollDelta);
           _setValue(newValue);
         }
       }
@@ -373,15 +373,15 @@ class _Refresh extends ChangeNotifier {
   }
 }
 
-class RefreshWidget extends StatefulWidget {
-  const RefreshWidget({Key? key, required this.refresh}) : super(key: key);
+class _RefreshWidget extends StatefulWidget {
+  const _RefreshWidget({Key? key, required this.refresh}) : super(key: key);
 
   final _Refresh refresh;
   @override
   _RefreshWidgetState createState() => _RefreshWidgetState();
 }
 
-class _RefreshWidgetState extends State<RefreshWidget>
+class _RefreshWidgetState extends State<_RefreshWidget>
     with TickerProviderStateMixin {
   late _Refresh refresh;
   late AnimationController animationController;
@@ -409,7 +409,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
     final controller = refresh;
     waitAnimated?.cancel();
 
-    void _startAnimated() {
+    void startAnimated() {
       animationController.value = controller.value;
       animationController.animateTo(0,
           duration: Duration(milliseconds: (controller.fac * 600).toInt()),
@@ -465,7 +465,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
         //   animationController.stop(canceled: true);
         // }
 
-        _startAnimated();
+        startAnimated();
         controller._setMode(RefreshMode.animatedIgnore);
         // _update();
         break;
@@ -477,7 +477,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
 
         waitAnimated = Timer(const Duration(milliseconds: 800), () {
           if (refresh == controller && mounted) {
-            _startAnimated();
+            startAnimated();
             refresh._setMode(RefreshMode.animatedDone);
           }
         });
@@ -505,7 +505,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
   }
 
   @override
-  void didUpdateWidget(covariant RefreshWidget oldWidget) {
+  void didUpdateWidget(covariant _RefreshWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (refresh != widget.refresh) {
       refresh.removeListener(_updateMode);
@@ -525,7 +525,7 @@ class _RefreshWidgetState extends State<RefreshWidget>
 
   @override
   Widget build(BuildContext context) {
-    final position = Scrollable.of(context)!.position;
+    final position = Scrollable.of(context).position;
     return AnimatedBuilder(
         animation: refresh,
         builder: (context, _) {

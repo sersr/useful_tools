@@ -10,24 +10,24 @@ import 'run_zone.dart';
 
 void main() async {
   test('sync Future', () async {
-    Future<int> _sync() {
+    Future<int> sync() {
       final x = SynchronousFuture(1);
       Log.i('_sync: ${x.hashCode}', showPath: false);
 
       return x;
     }
 
-    Future<int> _syncAsync() async {
+    Future<int> syncAsync() async {
       final x = SynchronousFuture(1);
       Log.i('_syncAsync: ${x.hashCode}', showPath: false);
       return x;
     }
 
-    void _syncAsyncTest() async {
+    void syncAsyncTest() async {
       Log.i('_syncAsyncTest', showPath: false);
     }
 
-    Future<void> _syncAsyncTestFuture() async {
+    Future<void> syncAsyncTestFuture() async {
       Log.i('_syncAsyncTestFuture', showPath: false);
     }
 
@@ -38,27 +38,27 @@ void main() async {
       });
     });
     printDash(label: '_sync');
-    await runZone(_sync);
+    await runZone(sync);
     printDash(label: '_sync no await');
     await runZone(() async {
-      _sync();
+      sync();
     });
 
     printDash(label: '_syncAsync');
-    await runZone(_syncAsync);
+    await runZone(syncAsync);
 
     printDash(label: '_syncAsyncTest');
-    await runZone(_syncAsyncTest);
+    await runZone(syncAsyncTest);
 
     printDash(label: '_syncAsyncTestFuture');
-    await runZone(_syncAsyncTestFuture);
+    await runZone(syncAsyncTestFuture);
     printDash(label: '_syncAsyncTestFuture then');
-    await runZone(() => _syncAsyncTestFuture()
+    await runZone(() => syncAsyncTestFuture()
         .then((value) => Log.i('_syncAsyncTestFuture then', showPath: false)));
     printDash(label: '_syncAsyncTestFuture await');
     await runZone(() async {
       Log.i('_syncAsyncTestFuture start', showPath: false);
-      await _syncAsyncTestFuture();
+      await syncAsyncTestFuture();
       Log.i('_syncAsyncTestFuture await', showPath: false);
     });
 

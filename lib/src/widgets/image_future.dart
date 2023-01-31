@@ -81,29 +81,29 @@ class ImageState extends State<ImageFuture> {
     final width = widget.width;
     final height = widget.height;
     final getPath = widget.getPath;
-    late ImageRefStream _stream;
+    late ImageRefStream newStream;
 
     if (getPath is PathFuture) {
-      _stream = imageRefCache!.preCacheUrl(imageKey,
+      newStream = imageRefCache!.preCacheUrl(imageKey,
           getPath: getPath,
           cacheWidth: width,
           cacheHeight: height,
           fit: widget.boxFit);
     } else if (getPath is Unit8ListFuture) {
-      _stream = imageRefCache!.preCacheUrlMemory(imageKey,
+      newStream = imageRefCache!.preCacheUrlMemory(imageKey,
           getPath: getPath,
           cacheWidth: width,
           cacheHeight: height,
           fit: widget.boxFit);
     }
 
-    if (stream != _stream) {
+    if (stream != newStream) {
       imageRefInfo?.dispose();
       imageRefInfo = null;
       final l = PictureListener(onListener, load: onDefLoad);
       stream?.removeListener(l);
-      _stream.addListener(l);
-      stream = _stream;
+      newStream.addListener(l);
+      stream = newStream;
     }
   }
 

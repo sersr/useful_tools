@@ -68,7 +68,7 @@ class TextCache {
 
     final linesText = <TextPainter>[];
 
-    final _t = TextPainter(textDirection: dir);
+    final t = TextPainter(textDirection: dir);
 
     final positionOffset = Offset(width, 0.1);
 
@@ -95,14 +95,14 @@ class TextCache {
           end += 4;
           final spc = paragraph.getRange(start, end);
           final s = spc.toString();
-          _t
+          t
             ..text = TextSpan(text: s, style: style)
             ..layout(maxWidth: width);
 
           await idleWait;
 
-          if (_t.computeLineMetrics().length > 1) {
-            final textPosition = _t.getPositionForOffset(positionOffset);
+          if (t.computeLineMetrics().length > 1) {
+            final textPosition = t.getPositionForOffset(positionOffset);
             var endOffset = textPosition.offset;
             var realLines = s.substring(0, endOffset).characters;
             final realLength = realLines.length;

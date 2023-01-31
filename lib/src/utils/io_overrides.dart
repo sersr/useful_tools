@@ -277,13 +277,13 @@ class FileDelegate implements File {
   }
 
   @override
-  Future<File> create({bool recursive = false}) {
-    return delegate.create(recursive: recursive);
+  Future<File> create({bool recursive = false, bool exclusive = false}) {
+    return delegate.create(recursive: recursive, exclusive: exclusive);
   }
 
   @override
-  void createSync({bool recursive = false}) {
-    return delegate.createSync(recursive: recursive);
+  void createSync({bool recursive = false, bool exclusive = false}) {
+    return delegate.createSync(recursive: recursive, exclusive: exclusive);
   }
 
   @override

@@ -88,9 +88,9 @@ class ImageRefCache {
       if (_imageRefCaches.isEmpty) return;
       final keyFirst = _imageRefCaches.keys.first;
       final cache = _imageRefCaches[keyFirst]!;
-      final _cacheSizeBytes = cache.sizeBytes;
-      if (_cacheSizeBytes != null) {
-        _sizeBytes -= _cacheSizeBytes;
+      final cacheSizeBytes = cache.sizeBytes;
+      if (cacheSizeBytes != null) {
+        _sizeBytes -= cacheSizeBytes;
         assert(_sizeBytes >= 0);
       }
       cache.dispose();
@@ -133,17 +133,17 @@ class ImageRefCache {
     return listener;
   }
 
-  ImageRefStream preCacheBuilder(List keys, {required _PreBuilder callback}) {
+  ImageRefStream preCacheBuilder(List keys, {required PreBuilder callback}) {
     final key = ListKey(keys);
-    final _img = getImage(key);
+    final img = getImage(key);
 
-    if (_img != null) return _img;
+    if (img != null) return img;
 
     final stream = _liveImageRefs[key] = ImageRefStream(onRemove: (stream) {
       assert(!_imageRefCaches.containsKey(key));
 
-      final _stream = _liveImageRefs[key];
-      if (_stream == stream) {
+      final streamCache = _liveImageRefs[key];
+      if (streamCache == stream) {
         _liveImageRefs.remove(key);
 
         if (stream.save) {
@@ -161,7 +161,7 @@ class ImageRefCache {
       _autoClear();
     });
 
-    LoadStatus _defLoad() {
+    LoadStatus defLoad() {
       if (!stream.hasListener) {
         /// 如果资源没被释放，那么 [_pictures] 中必定包含[stream]对象
         /// 因为移动操作只有当前任务完成之后才有效
@@ -173,10 +173,10 @@ class ImageRefCache {
       return stream.defLoad ? LoadStatus.defLoad : LoadStatus.active;
     }
 
-    var _done = false;
-    callback(_defLoad, (ui.Image? image, bool error) {
-      if (_done) Log.e('done : setImage', onlyDebug: false);
-      _done = true;
+    var done = false;
+    callback(defLoad, (ui.Image? image, bool error) {
+      if (done) Log.e('done : setImage', onlyDebug: false);
+      done = true;
 
       ImageRefInfo? imageRefInfo;
 
@@ -195,8 +195,8 @@ class ImageRefCache {
     assert(EventQueue.currentTask != null);
 
     await scheduler.endOfFrame;
-    final _load = defLoad();
-    switch (_load) {
+    final load = defLoad();
+    switch (load) {
       case LoadStatus.defLoad:
 
         /// 添加到队列末尾
@@ -219,37 +219,37 @@ class ImageRefCache {
       BoxFit fit = BoxFit.fitHeight}) {
     return preCacheBuilder([url, cacheWidth, cacheHeight, fit, 'preCacheUrl'],
         callback: (deferred, setImage) async {
-      var _done = false;
+      var done = false;
       final w = ui.window;
-      void _autoDone() {
-        _done = true;
+      void autoDone() {
+        done = true;
         setImage(null, false);
       }
 
       final path = await EventQueue.run(
           preCacheUrl,
           () => _def(deferred, () async {
-                final _path = await getPath(url);
+                final path = await getPath(url);
                 // 手动处理失败的情况
-                if (_path == null) {
+                if (path == null) {
                   Log.w('_path == null', onlyDebug: false);
                   setImage(null, true);
                 }
-                return _path;
-              }, _autoDone),
+                return path;
+              }, autoDone),
           channels: 6);
       if (path == null) {
-        assert(_done);
+        assert(done);
         return;
       }
 
       final f = File(path);
       if (!await f.exists()) {
-        _autoDone();
+        autoDone();
         return;
       }
 
-      Future<void> _imageTask() async {
+      Future<void> imageTask() async {
         ui.Image? image;
         var error = false;
 
@@ -268,7 +268,7 @@ class ImageRefCache {
           Log.e(e);
           error = true;
         } finally {
-          _done = true;
+          done = true;
           final local = image?.clone();
           image?.dispose();
           _loadQueue.addEventTask(() async {
@@ -278,7 +278,7 @@ class ImageRefCache {
         }
       }
 
-      EventQueue.run(this, () => _def(deferred, _imageTask, _autoDone),
+      EventQueue.run(this, () => _def(deferred, imageTask, autoDone),
           channels: 4);
     });
   }
@@ -293,10 +293,10 @@ class ImageRefCache {
     return preCacheBuilder(
         [...keys, cacheWidth, cacheHeight, fit, 'preCacheUrlMemory'],
         callback: (deferred, setImage) async {
-      var _done = false;
+      var done = false;
       final devicePixelRatio = ui.window.devicePixelRatio;
-      void _autoDone() {
-        _done = true;
+      void autoDone() {
+        done = true;
         setImage(null, false);
       }
 
@@ -307,19 +307,19 @@ class ImageRefCache {
                 // 手动处理失败的情况
                 if (bytes == null) {
                   await scheduler.endOfFrame;
-                  _done = true;
+                  done = true;
                   setImage(null, true);
                 }
                 return bytes;
-              }, _autoDone),
+              }, autoDone),
           channels: 6);
 
       if (bytes == null) {
-        assert(_done);
+        assert(done);
         return;
       }
 
-      Future<void> _imageTask() async {
+      Future<void> imageTask() async {
         ui.Image? image;
         var error = false;
 
@@ -336,7 +336,7 @@ class ImageRefCache {
           Log.e('$key\n$e', lines: 3, onlyDebug: false);
           error = true;
         } finally {
-          _done = true;
+          done = true;
           final local = image?.clone();
           image?.dispose();
           _loadQueue.addEventTask(() async {
@@ -346,7 +346,7 @@ class ImageRefCache {
         }
       }
 
-      EventQueue.push(this, () => _def(deferred, _imageTask, _autoDone));
+      EventQueue.push(this, () => _def(deferred, imageTask, autoDone));
     });
   }
 
@@ -360,10 +360,10 @@ class ImageRefCache {
   }
 
   void _clear(Map<ListKey, ImageRefStream> map) {
-    final _map = List.of(map.values);
+    final mapCache = List.of(map.values);
     map.clear();
     Timer.run(() async {
-      for (final stream in _map) {
+      for (final stream in mapCache) {
         stream.dispose();
         await idleWait;
       }
@@ -372,7 +372,7 @@ class ImageRefCache {
 }
 
 typedef SetImage = void Function(ui.Image? image, bool error);
-typedef _PreBuilder = Future<void> Function(LoadStatus Function(), SetImage);
+typedef PreBuilder = Future<void> Function(LoadStatus Function(), SetImage);
 typedef PathFuture = FutureOr<String?> Function(String url);
 typedef Unit8ListFuture = FutureOr<Uint8List?> Function();
 

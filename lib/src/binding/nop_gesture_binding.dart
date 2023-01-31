@@ -25,9 +25,9 @@ class _Resampler {
 
   void addOrDispatch(PointerEvent event) {
     if (event.kind == PointerDeviceKind.touch) {
-      final _my = _resamplers.putIfAbsent(event.device, () => Resampler());
+      final pointts = _resamplers.putIfAbsent(event.device, () => Resampler());
 
-      _my.addEvent(event);
+      pointts.addEvent(event);
     } else {
       _handlePointerEvent(event);
     }

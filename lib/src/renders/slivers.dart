@@ -12,7 +12,7 @@ class ListViewLoadingFooter extends StatefulWidget {
   final double extent;
   final WidgetBuilder builder;
   @override
-  _ListViewLoadingFooterState createState() => _ListViewLoadingFooterState();
+  State<ListViewLoadingFooter> createState() => _ListViewLoadingFooterState();
 }
 
 class _ListViewLoadingFooterState extends State<ListViewLoadingFooter>
@@ -37,7 +37,7 @@ class _ListViewLoadingFooterState extends State<ListViewLoadingFooter>
     if (_position != null) {
       _position!.removeListener(_onUpdatePosition);
     }
-    _position = Scrollable.of(context)?.position;
+    _position = Scrollable.maybeOf(context)?.position;
     if (_position != null) {
       _position!.addListener(_onUpdatePosition);
     }
@@ -93,14 +93,14 @@ class RenderSliverToBoxAdapter extends RenderSliverSingleBoxAdapter {
         childExtent = child!.size.height;
         break;
     }
-    var _extent = childExtent;
+    var extent = childExtent;
     // if (no.value == 0.0) {
     //   _extent = 0.0;
     // }
     final double paintedChildSize =
-        calculatePaintOffset(constraints, from: 0.0, to: _extent);
+        calculatePaintOffset(constraints, from: 0.0, to: extent);
     final double cacheExtent =
-        calculateCacheOffset(constraints, from: 0.0, to: _extent);
+        calculateCacheOffset(constraints, from: 0.0, to: extent);
 
     assert(paintedChildSize.isFinite);
     assert(paintedChildSize >= 0.0);
