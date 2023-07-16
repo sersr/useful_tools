@@ -35,17 +35,17 @@ extension UseTime<T> on Future<T> {
   }
 
   Future<T> logi([bool onlyDebug = true]) =>
-      log(Log.info, StackTrace.current, onlyDebug);
+      log(LogColor.info, StackTrace.current, onlyDebug);
   Future<T> logw([bool onlyDebug = true]) =>
-      log(Log.warn, StackTrace.current, onlyDebug);
+      log(LogColor.warn, StackTrace.current, onlyDebug);
   Future<T> loge([bool onlyDebug = true]) =>
-      log(Log.error, StackTrace.current, onlyDebug);
+      log(LogColor.error, StackTrace.current, onlyDebug);
 
-  Future<T> log(int level, [StackTrace? stack, bool onlyDebug = true]) {
+  Future<T> log(LogColor color, [StackTrace? stack, bool onlyDebug = true]) {
     if (onlyDebug && !debugMode) return this;
     stack ??= StackTrace.current;
     return useTimeMs((current, useTime) {
-      Log.log(level, 'use: $useTime ms', position: 1, onlyDebug: onlyDebug);
+      Log.log(color, 'use: $useTime ms', position: 1, onlyDebug: onlyDebug);
     });
   }
 
