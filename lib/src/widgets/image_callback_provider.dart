@@ -34,20 +34,10 @@ class CallbackWithKeyImage extends ImageProvider<CallbackWithKeyImage> {
   int get hashCode => Object.hash(
       keys is Iterable ? Object.hashAll(keys as Iterable) : keys, scale);
 
-  @override
-  ImageStreamCompleter loadBuffer(
-      CallbackWithKeyImage key, DecoderBufferCallback decode) {
-    return MultiFrameImageStreamCompleter(
-      codec: _loadAsync(key, decode),
-      scale: key.scale,
-      debugLabel: 'CallbackWithKeyImage(${describeIdentity(keys)})',
-    );
-  }
-
   static final _imageCallQueue = EventQueue(channels: 4);
 
   Future<ui.Codec> _loadAsync(
-      CallbackWithKeyImage key, DecoderBufferCallback decode) async {
+      CallbackWithKeyImage key, ImageDecoderCallback decode) async {
     assert(key == this);
     final bytes = await _imageCallQueue.awaitTask(callback);
     if (bytes == null) {
@@ -57,6 +47,16 @@ class CallbackWithKeyImage extends ImageProvider<CallbackWithKeyImage> {
     }
     final im = await ui.ImmutableBuffer.fromUint8List(bytes);
     return decode(im);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(
+      CallbackWithKeyImage key, ImageDecoderCallback decode) {
+    return MultiFrameImageStreamCompleter(
+      codec: _loadAsync(key, decode),
+      scale: key.scale,
+      debugLabel: 'CallbackWithKeyImage(${describeIdentity(keys)})',
+    );
   }
 
   @override

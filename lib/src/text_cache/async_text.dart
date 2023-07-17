@@ -112,7 +112,7 @@ class _AsyncBuilderState<T> extends State<AsyncBuilder<T>> {
   T? data;
   void _layoutText() async {
     final key = _layoutKey = Object();
-    final newData = await widget.layout(context, getMouted);
+    final newData = await widget.layout(context, getMounted);
     if (key == _layoutKey && mounted) {
       setState(() {
         data = newData;
@@ -120,7 +120,7 @@ class _AsyncBuilderState<T> extends State<AsyncBuilder<T>> {
     }
   }
 
-  bool getMouted() {
+  bool getMounted() {
     return mounted;
   }
 

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:nop/event_queue.dart';
 import 'package:nop/utils.dart';
 
-class TextCache {
+class TextAsyncBuilder {
   static Future<R> runTextPainter<R>(Future<R> Function() task) {
     return EventQueue.run(textPainter, task);
   }
