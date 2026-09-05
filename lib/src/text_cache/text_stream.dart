@@ -22,8 +22,8 @@ class TextAsyncBuilder {
         addText,
   }) {
     return EventQueue.run(
-      textPainter,
-      () => textPainter(
+      textPainter2,
+      () => textPainter2(
         text: text,
         width: width,
         style: style,
@@ -36,6 +36,46 @@ class TextAsyncBuilder {
   }
 
   static bool printTryCount = false;
+
+  static Future<List<TextPainter>> textPainter2({
+    required String text,
+    required double width,
+    required TextStyle style,
+    int? maxLines,
+    String? ellipsis,
+    TextDirection dir = TextDirection.ltr,
+    bool Function(int endPosition, Characters paragraph, String currentLine)?
+        addText,
+  }) async {
+    // final paragraphs = LineSplitter.split(text).toList();
+
+    var currentText = text;
+    final painter = <TextPainter>[];
+
+    final offset = Offset(width, 1);
+    while (currentText.isNotEmpty) {
+      final t = TextPainter(
+        text: TextSpan(text: currentText, style: style),
+        maxLines: 1,
+        textDirection: dir,
+      );
+
+      t.layout(maxWidth: width);
+
+      final position = t.getPositionForOffset(offset);
+      final end = position.offset;
+
+      painter.add(t);
+
+      if (end >= currentText.length) {
+        break;
+      }
+      currentText = currentText.substring(end);
+      await idleWait;
+    }
+
+    return painter;
+  }
 
   /// 文本异步布局实现
   ///

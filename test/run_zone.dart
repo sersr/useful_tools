@@ -8,13 +8,13 @@ Future<void> runZone(FutureOr<void> Function() callback) async {
   return runZoned(callback,
       zoneSpecification: ZoneSpecification(
           scheduleMicrotask: (zone, parentDelegate, self, callback) {
-        Log.w('scheduleMictotask', showPath: false);
+        Log.w('scheduleMictotask');
         return parentDelegate.scheduleMicrotask(zone, callback);
       }, registerUnaryCallback: <R, T>(zone, parenDelegate, self, callback) {
-        Log.w('registerUnaryCallback', showPath: false);
+        Log.w('registerUnaryCallback');
         return parenDelegate.registerUnaryCallback(zone, callback);
       }, createTimer: (zone, parent, self, duration, callback) {
-        Log.w('createTimer', showPath: false);
+        Log.w('createTimer');
         return parent.createTimer(zone, duration, callback);
       }, print: (zone, parent, self, line) {
         return Zone.root.print(line);

@@ -12,29 +12,29 @@ void main() async {
   test('sync Future', () async {
     Future<int> sync() {
       final x = SynchronousFuture(1);
-      Log.i('_sync: ${x.hashCode}', showPath: false);
+      Log.i('_sync: ${x.hashCode}');
 
       return x;
     }
 
     Future<int> syncAsync() async {
       final x = SynchronousFuture(1);
-      Log.i('_syncAsync: ${x.hashCode}', showPath: false);
+      Log.i('_syncAsync: ${x.hashCode}');
       return x;
     }
 
     void syncAsyncTest() async {
-      Log.i('_syncAsyncTest', showPath: false);
+      Log.i('_syncAsyncTest');
     }
 
     Future<void> syncAsyncTestFuture() async {
-      Log.i('_syncAsyncTestFuture', showPath: false);
+      Log.i('_syncAsyncTestFuture');
     }
 
     /// 本次事件循环之后调用
     runZone(() async {
       Timer.run(() {
-        Log.e('timer', showPath: false);
+        Log.e('timer');
       });
     });
     printDash(label: '_sync');
@@ -54,12 +54,12 @@ void main() async {
     await runZone(syncAsyncTestFuture);
     printDash(label: '_syncAsyncTestFuture then');
     await runZone(() => syncAsyncTestFuture()
-        .then((value) => Log.i('_syncAsyncTestFuture then', showPath: false)));
+        .then((value) => Log.i('_syncAsyncTestFuture then')));
     printDash(label: '_syncAsyncTestFuture await');
     await runZone(() async {
-      Log.i('_syncAsyncTestFuture start', showPath: false);
+      Log.i('_syncAsyncTestFuture start');
       await syncAsyncTestFuture();
-      Log.i('_syncAsyncTestFuture await', showPath: false);
+      Log.i('_syncAsyncTestFuture await');
     });
 
     printDash(label: 'timer');
@@ -116,5 +116,5 @@ void main() async {
 }
 
 void printDash({String label = ''}) {
-  Log.e(label.padRight(30, '-'), showPath: false, zone: Zone.root);
+  Log.e(label.padRight(30, '-'), zone: Zone.root);
 }

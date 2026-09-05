@@ -51,7 +51,7 @@ class _ListViewLoadingFooterState extends State<ListViewLoadingFooter>
     //   return;
     // }
     final v = ((extent - pixels) / extent).clamp(0.0, 1.0);
-    Log.i('pixels: $pixels | $v', onlyDebug: false);
+    Log.i('pixels: $pixels | $v');
     animationController.value = v;
   }
 
