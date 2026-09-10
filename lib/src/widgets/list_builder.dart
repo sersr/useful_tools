@@ -57,7 +57,7 @@ class ListViewBuilder extends StatefulWidget {
     required this.itemBuilder,
     this.itemExtent,
     this.primary = true,
-    this.cacheExtent,
+    this.scrollCacheExtent,
     this.padding = EdgeInsets.zero,
     this.scrollController,
     this.finishLayout,
@@ -71,7 +71,7 @@ class ListViewBuilder extends StatefulWidget {
   final IndexedWidgetBuilder itemBuilder;
   final double? itemExtent;
   final bool? primary;
-  final double? cacheExtent;
+  final ScrollCacheExtent? scrollCacheExtent;
   final EdgeInsets padding;
   final ScrollController? scrollController;
   final FinishLayout? finishLayout;
@@ -135,7 +135,7 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
             child: CustomScrollView(
               physics: widget.physics,
               primary: widget.primary,
-              cacheExtent: widget.cacheExtent,
+              scrollCacheExtent: widget.scrollCacheExtent,
               controller: controller,
               scrollBehavior: widget.scrollBehavior,
               slivers: [
@@ -295,11 +295,11 @@ class _Refresh extends ChangeNotifier {
   final ValueNotifier<RefreshMode> _mode = ValueNotifier(RefreshMode.idle);
   RefreshMode get mode => _mode.value;
 
-  addModeListener(VoidCallback listener) {
+  void addModeListener(VoidCallback listener) {
     _mode.addListener(listener);
   }
 
-  removeModeListener(VoidCallback listener) {
+  void removeModeListener(VoidCallback listener) {
     _mode.removeListener(listener);
   }
 
