@@ -3,11 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 class AsyncText extends LeafRenderObjectWidget {
-  const AsyncText.async(this.text, {Key? key})
-      : needLayout = false,
-        super(key: key);
+  const AsyncText.async(this.text, {super.key})
+      : needLayout = false;
   AsyncText({
-    Key? key,
+    super.key,
     required String? text,
     TextDirection textDirection = TextDirection.ltr,
     TextStyle? style,
@@ -19,8 +18,7 @@ class AsyncText extends LeafRenderObjectWidget {
           textDirection: textDirection,
           maxLines: maxLines,
           ellipsis: ellipsis,
-        ),
-        super(key: key);
+        );
 
   final TextPainter text;
   final bool needLayout;
@@ -40,9 +38,8 @@ class AsyncText extends LeafRenderObjectWidget {
 }
 
 class AsyncTextRenderBox extends RenderBox {
-  AsyncTextRenderBox({required TextPainter text, required bool needLayout})
-      : _textPainter = text,
-        _needLayout = needLayout;
+  AsyncTextRenderBox({required TextPainter text, required this._needLayout})
+      : _textPainter = text;
 
   TextPainter _textPainter;
 
@@ -80,11 +77,11 @@ typedef AsyncTextBuilder = AsyncBuilder<List<List<TextPainter>?>>;
 
 class AsyncBuilder<T> extends StatefulWidget {
   const AsyncBuilder({
-    Key? key,
+    super.key,
     required this.builder,
     required this.layout,
     this.palceholder,
-  }) : super(key: key);
+  });
 
   final Future<T> Function(BuildContext context, bool Function() mounted)
       layout;

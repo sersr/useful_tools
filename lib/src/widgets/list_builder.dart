@@ -7,7 +7,7 @@ import 'botton.dart';
 
 class ListItem extends StatelessWidget {
   const ListItem({
-    Key? key,
+    super.key,
     required this.child,
     this.onLongPress,
     this.onTap,
@@ -17,7 +17,7 @@ class ListItem extends StatelessWidget {
     this.splashColor,
     this.padding,
     this.outPadding,
-  }) : super(key: key);
+  });
 
   final Widget child;
   final VoidCallback? onTap;
@@ -52,7 +52,7 @@ class ListItem extends StatelessWidget {
 
 class ListViewBuilder extends StatefulWidget {
   const ListViewBuilder({
-    Key? key,
+    super.key,
     this.itemCount,
     required this.itemBuilder,
     this.itemExtent,
@@ -65,7 +65,7 @@ class ListViewBuilder extends StatefulWidget {
     this.color,
     this.physics,
     this.scrollBehavior,
-  }) : super(key: key);
+  });
 
   final int? itemCount;
   final IndexedWidgetBuilder itemBuilder;
@@ -165,9 +165,8 @@ class _ListViewBuilderState extends State<ListViewBuilder> {
 typedef FinishLayout = void Function(int firstIndex, int lastIndex);
 
 class MyDelegate extends SliverChildBuilderDelegate {
-  const MyDelegate(NullableIndexedWidgetBuilder builder,
-      {this.finishLayout, int? childCount})
-      : super(builder, childCount: childCount);
+  const MyDelegate(super.builder,
+      {this.finishLayout, super.childCount});
 
   final FinishLayout? finishLayout;
   @override
@@ -177,7 +176,7 @@ class MyDelegate extends SliverChildBuilderDelegate {
 }
 
 class MyScrollPhysics extends ScrollPhysics {
-  const MyScrollPhysics({ScrollPhysics? parent}) : super(parent: parent);
+  const MyScrollPhysics({super.parent});
   @override
   bool recommendDeferredLoading(
       double velocity, ScrollMetrics metrics, BuildContext context) {
@@ -374,7 +373,7 @@ class _Refresh extends ChangeNotifier {
 }
 
 class _RefreshWidget extends StatefulWidget {
-  const _RefreshWidget({Key? key, required this.refresh}) : super(key: key);
+  const _RefreshWidget({required this.refresh});
 
   final _Refresh refresh;
   @override

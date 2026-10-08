@@ -7,8 +7,7 @@ typedef WidgetBuilder = Widget Function(
 
 class ListViewLoadingFooter extends StatefulWidget {
   const ListViewLoadingFooter(
-      {Key? key, required this.extent, required this.builder})
-      : super(key: key);
+      {super.key, required this.extent, required this.builder});
   final double extent;
   final WidgetBuilder builder;
   @override
@@ -63,8 +62,7 @@ class _ListViewLoadingFooterState extends State<ListViewLoadingFooter>
 }
 
 class Footer extends SingleChildRenderObjectWidget {
-  const Footer({Key? key, required Widget child})
-      : super(key: key, child: child);
+  const Footer({super.key, required Widget super.child});
 
   @override
   RenderObject createRenderObject(BuildContext context) {
@@ -74,7 +72,7 @@ class Footer extends SingleChildRenderObjectWidget {
 
 class RenderSliverToBoxAdapter extends RenderSliverSingleBoxAdapter {
   /// Creates a [RenderSliver] that wraps a [RenderBox].
-  RenderSliverToBoxAdapter({RenderBox? child}) : super(child: child);
+  RenderSliverToBoxAdapter({super.child});
 
   @override
   void performLayout() {

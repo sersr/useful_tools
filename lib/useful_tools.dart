@@ -1,4 +1,4 @@
-library useful_tools;
+library;
 
 export 'common.dart';
 export 'text_cache.dart';
